@@ -11,7 +11,6 @@ rm(list=ls())
 # UniProt organism ID (TaxID) for the organism that was used in the experiment.
 
 taxID = as.integer(readline(prompt = "Enter UniProt organism ID: "))
-userFasta = readline(prompt = "Enter the name of your additional .FASTA file included in MaxQuant (e.g. 'FMDVfull' without quotes): ")
 
 # Helper function for text formatting in message() output.
 # From https://stackoverflow.com/a/45714700
@@ -34,7 +33,7 @@ for (package in packages) {
 }
 
 tidymess("Installing other required packages.")
-pacman::p_load(BiocManager, dplyr, stringr, MSstats, MSstatsTMT, MSstatsConvert, data.table, UniProt.ws)
+pacman::p_load(BiocManager, dplyr, stringr, MSstats, MSstatsTMT, MSstatsConvert, data.table, UniProt.ws, tcltk)
 
 # Set working directory to the the script location.
 
@@ -49,12 +48,12 @@ setwd(utils::getSrcDirectory(function(){}))
 # e.g., read.table("evidence,txt", sep="\t", header=TRUE), or using the 'readr'
 # e.g. read_csv("file.csv", na = c("", "NA", "0")).
 
-tidymess("Loading MaxQuant input files.")
+tidymess("Select your 'msstats.csv' and the annotation file.")
 
-evidence <- fread("msstats.csv")
-# Automatically generated annotation file by FragPipe has a problem with the
-# condition and bioreplicate columns being wrong.
-annotation <- fread("MSstatsTMT_annotation.csv")
+evidence <- tk_choose.files()
+evidence <- fread(evidence)
+annotation <- tk_choose.files()
+annotation <- fread(annotation)
 
 # SKIPPED FOR FRAGPIPE
 # TODO: Check for userFasta presence in the evidence file. Abort if not found.
@@ -66,9 +65,18 @@ annotation <- fread("MSstatsTMT_annotation.csv")
 # Convert FragPipe data to MSstatsTMT input. Preview the input through
 # head(input) to check that everything looks right.
 
+# Check that the 'Condition' column has at least two conditions set.
+# Currently a bug(?) in FragPipe annotation file generation where it puts the
+# conditions set in FragPipe in the BioReplicate column, and doesn't put anything
+# in the condition column
+
+if (sum(is.na(annotation$Condition)) > 0) {
+  stop(simpleError("The condition column in the annotation file contains NA values."))
+}
+
 tidymess("Building MsStats input from MaxQuant files.")
 
-input <- PhilosophertoMSstatsTMTFormat(evidence, annotation)
+input <- PhilosophertoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
 
 tidymess("----------------------head(input)-----------------------")
 print(head(input))
@@ -87,21 +95,21 @@ if (sum(str_detect(input$Condition, '^Norm$')) > 0) {
   tidymess("Normalization channel found in 'Condition' annotation. Continuing
   with defaults.")
   
-  quant.msstats <- proteinSummarization(input)
+  quant.msstats <- proteinSummarization(input, use_log_file = FALSE)
   
 } else {
   
   tidymess("Normalization channel not found in 'Condition' annotation; setting
   reference_norm to FALSE.")
   
-  quant.msstats <- proteinSummarization(input, reference_norm = FALSE)
+  quant.msstats <- proteinSummarization(input, reference_norm = FALSE, use_log_file = FALSE)
 }
 
 tidymess("Performing pairwise comparisons using a moderated t-test. Use 
          'test.pairwise <- groupComparisonsTMT(quant.msstats)' to perform
          unmoderated testing.")
 
-test.pairwise <- groupComparisonTMT(quant.msstats, moderated = TRUE)
+test.pairwise <- groupComparisonTMT(quant.msstats, moderated = TRUE, use_log_file = FALSE)
 
 tidymess("----------head(test.pairwise$ComparisonResult)----------")
 print(head(test.pairwise$ComparisonResult))
