@@ -76,6 +76,7 @@ if (sum(is.na(annotation$Condition)) > 0) {
 
 tidymess("Building MsStats input from MaxQuant files.")
 
+MSstatsConvert::MSstatsLogsSettings(use_log_file = FALSE, pkg_name = "MSstatsTMT")
 input <- PhilosophertoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
 
 tidymess("----------------------head(input)-----------------------")
