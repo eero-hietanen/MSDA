@@ -18,5 +18,11 @@ ui <- fluidPage(
   
   add_busy_spinner(spin = "orbit", color = "#f0bc13"),
   
+  fluidRow(
+    fileInput("evidence", "Upload evidence"),
+    fileInput("annotation", "Upload annotation"),
+    actionButton("uploadData", "Upload data"),
+  )
+  
 )
 
