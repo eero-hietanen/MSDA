@@ -190,5 +190,7 @@ comparisonResult <- test.pairwise$ComparisonResult
 # E.g. plot_volcano(df=mergedResult[mergedResult$Label=="WT vs Neg"], logFC="log2FC", pvals="adj.pvalue", sig_threshold=0.05)
 # MSstats also has a function to graph volcano plots, however it's not clear how it operates with MSstatsTMT generated group comparisons.
 
+# Look into EnhancedVolcano package for plotting the volcano plots.
+
 # Since services like PANTHER lack a database for Chinese hamster, GO analysis could be done with topGO package using a custom geneID<->GOid mapping
 # as described in the topGO manual (Bioconductor site) section 4.3.
