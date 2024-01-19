@@ -13,16 +13,15 @@ dataprocess_ui <- function(id) {
   )
 }
 
+# dataprocess_server most likely needs inputs from dataupload to pass the data
+
 dataprocess_server <- function(id) {
   
   moduleServer(id, function(input, output, session) {
     
     output$preprocessed_data <- DT::renderDataTable({
       
-      dataOut
-      
-      # https://stackoverflow.com/questions/73071711/r-shiny-how-to-pass-reactive-filtered-dataframe-between-modules
-      
+      # data$dataOut
       
     })
     
