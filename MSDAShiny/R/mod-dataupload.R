@@ -20,18 +20,21 @@ dataupload_server <- function(id) {
   
   moduleServer(id, function(input, output, session) {
     
-    dataOut <- reactiveValues()
+    # myData <- reactiveValues()
     
     observeEvent(input$preprocess, {
       show_modal_spinner(spin = "orbit", color = "#1b7f94")
       evid <- read.csv(input$evidence$datapath)
       annot <- read.csv(input$annotation$datapath)
       
-      dataOut <- PhilosophertoMSstatsTMTFormat(evid, annot, use_log_file = FALSE)
+      myData <- PhilosophertoMSstatsTMTFormat(evid, annot, use_log_file = FALSE)
       
       remove_modal_spinner()
-      return(dataOut)
+      
+      return(x="test")
     })
+    
+    
     
   })
   

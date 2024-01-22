@@ -12,13 +12,15 @@ library(UniProt.ws)
 library(DT)
 library(shinyjs)
 library(shinybusy)
+library(bslib)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
-options(shiny.error = recover)
+# options(shiny.error = recover)
 
 ui <- fluidPage(
   
   useShinyjs(),
+  theme = bs_theme(bootswatch = "flatly"),
   # add_busy_spinner(spin = "orbit", color = "#f0bc13"),
   
   fluidRow(
@@ -41,8 +43,9 @@ server <- function(input, output, session) {
   # https://stackoverflow.com/questions/69340125/cant-communicate-data-between-shiny-modules
   # https://stackoverflow.com/questions/76140172/modularized-shiny-app-how-to-download-dataset-passed-between-modules
   
-  dataupload_server("upload")
-  dataprocess_server("process")
+  myData <- dataupload_server("upload")
+  
+  dataprocess_server("process", reactive({myData}))
   # plotting_server("plot")
 
 }

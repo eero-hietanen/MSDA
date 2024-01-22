@@ -9,21 +9,19 @@ dataprocess_ui <- function(id) {
   ns <- NS(id)
 
   fluidPage(
-    dataTableOutput(ns("preprocessed_data"))
+    textOutput(ns("preprocessed_data"))
   )
 }
 
-# dataprocess_server most likely needs inputs from dataupload to pass the data
+# dataprocess_server needs myData from dataupload_server to further process the data
 
-dataprocess_server <- function(id) {
-  
+dataprocess_server <- function(id, myData) {
+
   moduleServer(id, function(input, output, session) {
+
+    req(myData)
     
-    output$preprocessed_data <- DT::renderDataTable({
-      
-      # data$dataOut
-      
-    })
+    output$preprocessed_data <- renderPrint(myData)
     
   })
   
@@ -31,9 +29,10 @@ dataprocess_server <- function(id) {
 
 processTest <- function() {
 
+  myData <- iris
   ui <- fluidPage(dataprocess_ui("x"))
   server <- function(input, output, session){
-    dataprocess_server("x")
+    dataprocess_server("x", reactive({myData}))
   }
 
   shinyApp(ui, server)
