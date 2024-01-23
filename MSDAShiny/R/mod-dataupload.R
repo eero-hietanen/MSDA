@@ -72,7 +72,9 @@ dataupload_server <- function(id) {
     # output$text <- renderPrint(vals$myData)
     
     # return(reactive(vals$myData))
+
     return(val = reactive(rawData())) # this should also be fine returning just reactive(rawData())
+
     
     
   })
