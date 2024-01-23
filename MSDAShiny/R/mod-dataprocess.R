@@ -33,7 +33,7 @@ dataprocess_server <- function(id, input_data) {
     #   
     # })
     
-    output$table <- renderPrint(reactive(vals$myData))
+    output$table <- renderDT(input_data())
     
   })
   

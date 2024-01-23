@@ -15,7 +15,7 @@ library(shinybusy)
 library(bslib)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
-options(shiny.error = recover)
+options(shiny.error = NULL)
 
 ui <- fluidPage(
   
@@ -47,8 +47,8 @@ server <- function(input, output, session) {
   # https://stackoverflow.com/questions/69340125/cant-communicate-data-between-shiny-modules
   # https://stackoverflow.com/questions/76140172/modularized-shiny-app-how-to-download-dataset-passed-between-modules
   
-  dataupload_output <- dataupload_server("upload")
-  dataprocess_server("process", reactive({dataupload_output}))
+  values <- dataupload_server("upload")
+  dataprocess_server("process", values)
   # plotting_server("plot")
 
 }

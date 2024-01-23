@@ -12,9 +12,9 @@ dataupload_ui <- function(id) {
     fileInput(ns("evidence"), "Evidence"),
     fileInput(ns("annotation"), "Annotation"),
     actionButton(ns("preprocess"), "Preprocess files"),
-    # mainPanel(
-    # DTOutput(ns("table")),  # uncomment for table test
-    # )
+    mainPanel(
+    DTOutput(ns("table")),  # uncomment for table test
+    )
     # 
     # mainPanel(
     #   textOutput(ns("text")) # testing for function output
@@ -48,7 +48,7 @@ dataupload_server <- function(id) {
     
     # vals <- reactiveValues() # required in the event of observeEvent()
     
-    rawData <- observeEvent(input$preprocess, {
+    rawData <- eventReactive(input$preprocess, {
       
       show_modal_spinner(spin = "orbit", color = "#1b7f94")
 
@@ -63,19 +63,17 @@ dataupload_server <- function(id) {
       remove_modal_spinner()
       # If 'dataOut' is not called here after removal of the modal spinner, the table doesn't show up.
       # If spinner is not used, then the table shows normally without an additional call to the table
-      
       dataOut
+      # vals$myData <- dataOut
       
     })
     
-    # output$table <- renderDT(rawData()) # uncomment for table test
+    output$table <- renderDT(rawData()) # uncomment for table test
     # output$text <- renderPrint(vals$myData)
     
     # return(reactive(vals$myData))
 
-    return(val = reactive(rawData())) # this should also be fine returning just reactive(rawData())
-
-    
+    # return(val = reactive(rawData())) # this should also be fine returning just reactive(rawData())
     
   })
   
