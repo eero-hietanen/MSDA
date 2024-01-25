@@ -20,20 +20,20 @@ dataprocess_server <- function(id, input_data) {
 
   moduleServer(id, function(input, output, session) {
 
-    # ppData <- eventReactive(input$process, {
-    #   
-    #   show_modal_spinner(spin = "orbit", color = "#1b7f94")
-    #   
-    #   quant.msstats <- proteinSummarization(input_data, reference_norm = FALSE, use_log_file = FALSE)
-    #   test.pairwise <- groupComparisonTMT(quant.msstats, moderated = TRUE, use_log_file = FALSE)
-    #   
-    #   remove_modal_spinner()
-    #   
-    #   test.pairwise
-    #   
-    # })
+    ppData <- eventReactive(input$process, {
+
+      show_modal_spinner(spin = "orbit", color = "#1b7f94")
+
+      quant.msstats <- proteinSummarization(input_data, reference_norm = FALSE, use_log_file = FALSE)
+      test.pairwise <- groupComparisonTMT(quant.msstats, moderated = TRUE, use_log_file = FALSE)
+
+      remove_modal_spinner()
+
+      return(test.pairwise)
+
+    })
     
-    output$table <- renderDT(input_data())
+    output$table <- renderDT(ppData())
     
   })
   

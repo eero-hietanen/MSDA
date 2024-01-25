@@ -15,20 +15,31 @@ library(shinybusy)
 library(bslib)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
-options(shiny.error = NULL)
+# options(shiny.error = NULL)
 
 ui <- fluidPage(
   
   useShinyjs(),
   theme = bs_theme(bootswatch = "flatly"),
-  # add_busy_spinner(spin = "orbit", color = "#f0bc13"),
   
   fluidRow(
     
-    dataupload_ui("upload"),
-    dataprocess_ui("process"),
+    column(5,
+           dataupload_ui("upload"),
+           # dataprocess_ui("process")
+           ),
+    # column(7, plotting_ui("plot")),
+    # dataupload_ui("upload"),
+    # dataprocess_ui("process"),
     # plotting_ui("plot"),
   ),
+  
+  mainPanel(
+    tabsetPanel(
+      tabPanel("Preprocessed data", DTOutput("preprocessed_table")),
+      tabPanel("Group comparison data", DTOutput("groupcomp_table")),
+    )
+  )
 
 ) 
 
@@ -47,9 +58,17 @@ server <- function(input, output, session) {
   # https://stackoverflow.com/questions/69340125/cant-communicate-data-between-shiny-modules
   # https://stackoverflow.com/questions/76140172/modularized-shiny-app-how-to-download-dataset-passed-between-modules
   
-  values <- dataupload_server("upload")
-  dataprocess_server("process", values)
+  upload_values <- dataupload_server("upload")
+  # upload_values() being called below the way it is results in the table output depending on the code order in data upload module
+  # i.e., if reactive(preprocessed_data()) is called last in the module, the table shows the preprocessed data table
+  # look into update funcs for output
+  
+  # change these to be dynamically shown
+  output$preprocessed_table <- renderDT(upload_values$preprocessed_data)
+  output$groupcomp_table <- renderDT(upload_values$groupcomp_data)
+  # dataprocess_server("process", reactive(values))
   # plotting_server("plot")
+  
 
 }
 
