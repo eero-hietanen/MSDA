@@ -9,31 +9,24 @@ dataprocess_ui <- function(id) {
   ns <- NS(id)
 
   fluidPage(
-    actionButton(ns("process"), "Protein summarization"),
-    DTOutput(ns("table")),
+    actionButton(ns("groupcomparisons"), "Perform group comparisons"),
+    # DTOutput(ns("table")),
   )
 }
 
 # dataprocess_server needs myData from dataupload_server to further process the data
 
-dataprocess_server <- function(id, input_data) {
+dataprocess_server <- function(id, dataupload_data) {
 
   moduleServer(id, function(input, output, session) {
-
-    ppData <- eventReactive(input$process, {
-
-      show_modal_spinner(spin = "orbit", color = "#1b7f94")
-
-      quant.msstats <- proteinSummarization(input_data, reference_norm = FALSE, use_log_file = FALSE)
-      test.pairwise <- groupComparisonTMT(quant.msstats, moderated = TRUE, use_log_file = FALSE)
-
-      remove_modal_spinner()
-
-      return(test.pairwise)
-
-    })
     
-    output$table <- renderDT(ppData())
+    values <- reactiveValues(groupcomp_data = NULL)
+    
+    observe({
+      values$groupcomp_data <- data_groupcomparisons(dataupload_data$preprocessed_data)
+    }) %>% bindEvent(input$groupcomparisons)
+
+    values
     
   })
   

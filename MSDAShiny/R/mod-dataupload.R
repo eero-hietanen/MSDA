@@ -7,13 +7,15 @@ dataupload_ui <- function(id) {
 
   tagList(
     # useShinyjs(),
-
+    
     fileInput(ns("evidence"), "Evidence"),
     fileInput(ns("annotation"), "Annotation"),
     actionButton(ns("preprocess"), "Preprocess files"),
-    actionButton(ns("groupcomparisons"), "Perform group comparisons"),
-    DTOutput(ns("table")),  # uncomment for table test
-    verbatimTextOutput(ns("text")) # testing for function output
+    # actionButton(ns("groupcomparisons"), "Perform group comparisons"),
+    
+    # DTOutput(ns("table")),  # uncomment for table test
+    # verbatimTextOutput(ns("text")) # testing for function output
+      
   )
 
 }
@@ -97,16 +99,14 @@ dataupload_server <- function(id) {
     # observe(groupcomp_data())
     # reactive(groupcomp_data())
     
-    values <- reactiveValues(preprocessed_data = NULL, groupcomp_data = NULL)
+    values <- reactiveValues(preprocessed_data = NULL)
     
     observe({
       values$preprocessed_data <- data_preprocessing(input$evidence, input$annotation)
       values$preprocessed_data
     }) %>% bindEvent(input$preprocess)
 
-    observe({
-      values$groupcomp_data <- data_groupcomparisons(values$preprocessed_data)
-    }) %>% bindEvent(input$groupcomparisons)
+
     
     values
     
