@@ -19,9 +19,9 @@ plotting_server <- function(id, groupcomparison_data) {
   
   moduleServer(id, function(input, output, session) {
     
-    p <- NULL
+    # p <- NULL
     
-    values <- groupcomparison_data #necessary?
+    values <- reactiveValues(p = NULL)
     
     # g1Select = reactive({
     #   mydata = groupcomparison_data 
@@ -33,10 +33,15 @@ plotting_server <- function(id, groupcomparison_data) {
     #   choices = g1Select()
     # )})
     observe({
-      p <- plotting_volcano(groupcomparison_data$groupcomp_data)
+      values$p <- plotting_volcano(groupcomparison_data$groupcomp_data)
     }) %>% bindEvent(input$plotvolc)
     
-    p
+    # # if(!is.null(p)) p
+    # return(reactive(values$p))
+    
+    output$plot_output <- renderPlot({
+      values$p
+    })
     
   })
 }

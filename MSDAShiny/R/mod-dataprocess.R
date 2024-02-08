@@ -9,7 +9,9 @@ dataprocess_ui <- function(id) {
   ns <- NS(id)
 
   fluidPage(
+    textInput(ns("taxID"), "UniProt taxa ID"),
     actionButton(ns("groupcomparisons"), "Perform group comparisons"),
+    actionButton(ns("uniprottable"), "Fetch UniProt data"),
     # DTOutput(ns("table")),
   )
 }
@@ -22,10 +24,21 @@ dataprocess_server <- function(id, dataupload_data) {
     
     values <- reactiveValues(groupcomp_data = NULL)
     
+    # values <- reactiveValues(data=list(groupcomp_data = NULL, uniprot_table = NULL)) # initializing a list of reactiveValue elements; called as e.g. values$data$groupcomp_data
+    
     observe({
+      # test <- dataupload_data()[1] # note the way to call the reactiveValue in the list returned by dataupload
+      # browser()
       values$groupcomp_data <- data_groupcomparisons(dataupload_data$preprocessed_data)
+      # return(values)
     }) %>% bindEvent(input$groupcomparisons)
-
+    
+    observe({
+      # call util func to fetch uniprot data and construct table; returns the table
+    }) %>% bindEvent(input$uniprottable)
+    
+    output$groupcomp_table <- renderDT(values$groupcomp_data)
+    
     values
     
   })

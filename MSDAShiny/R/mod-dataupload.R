@@ -103,10 +103,15 @@ dataupload_server <- function(id) {
     
     observe({
       values$preprocessed_data <- data_preprocessing(input$evidence, input$annotation)
-      values$preprocessed_data
+      # return(values)
     }) %>% bindEvent(input$preprocess)
 
 
+    output$preprocessed_table <- renderDT(values$preprocessed_data)
+    
+    # reactive({
+    #   list(preprocessed_data = values$preprocessed_data)
+    # })
     
     values
     

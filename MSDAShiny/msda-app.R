@@ -50,7 +50,7 @@ ui <- fluidPage(
         tabsetPanel(id = "output_tables", type = "pills",
                     tabPanel(id = "preprocessed_table", "Preprocessed data", DTOutput("preprocessed_table")),
                     tabPanel(id = "groupcomp_table", "Group comp data", DTOutput("groupcomp_table")),
-                    tabPanel(id = "plot_output", "Volcano Plot", renderPlot("plot_output")),
+                    tabPanel(id = "plot_output", "Volcano Plot", plotOutput("plot_output")),
         )
     )
   )
@@ -125,9 +125,12 @@ server <- function(input, output, session) {
   plotting_values <- plotting_server("plotting", dataprocess_values) # plot function in utils.R works, but module communication has a problem
   
   # change these to be dynamically shown
+  # output$preprocessed_table <- renderDT(upload_values$preprocessed_data)
   output$preprocessed_table <- renderDT(upload_values$preprocessed_data)
   output$groupcomp_table <- renderDT(dataprocess_values$groupcomp_data)
-  output$plot_output <- renderImage(plotting_values) #this needs to call plot(<ggplotobject>) here, and also be reactive
+  # renderPlot() has to be inside the plotting module to work; direct the plot to the output that's in the main app (name sensitive?)
+  # output$plot_output <- renderPlot(plotting_values) #this needs to call plot(<ggplotobject>) here, and also be reactive
+  output$plot_output <- plotting_values
   
   # below the 'input$preprocess' and 'input$groupcomparisons' inputs are accessed through the dataupload_ui call
   # observing the event works, but changing the tab visibility doesn't quite work; check insertTab()
