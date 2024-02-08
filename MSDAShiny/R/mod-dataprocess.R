@@ -24,13 +24,8 @@ dataprocess_server <- function(id, dataupload_data) {
     
     values <- reactiveValues(groupcomp_data = NULL)
     
-    # values <- reactiveValues(data=list(groupcomp_data = NULL, uniprot_table = NULL)) # initializing a list of reactiveValue elements; called as e.g. values$data$groupcomp_data
-    
     observe({
-      # test <- dataupload_data()[1] # note the way to call the reactiveValue in the list returned by dataupload
-      # browser()
       values$groupcomp_data <- data_groupcomparisons(dataupload_data$preprocessed_data)
-      # return(values)
     }) %>% bindEvent(input$groupcomparisons)
     
     observe({

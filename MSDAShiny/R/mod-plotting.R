@@ -8,8 +8,7 @@ plotting_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
-    
-    selectInput(ns("group1"), "Choices", ""),
+
     actionButton(ns("plotvolc"), "Volcano plot of DE genes"),
     
   )
@@ -18,26 +17,12 @@ plotting_ui <- function(id) {
 plotting_server <- function(id, groupcomparison_data) {
   
   moduleServer(id, function(input, output, session) {
-    
-    # p <- NULL
-    
+
     values <- reactiveValues(p = NULL)
-    
-    # g1Select = reactive({
-    #   mydata = groupcomparison_data 
-    #   names(mydata)
-    # })
-    # 
-    # observe({
-    #   updateSelectInput(session, "group1",
-    #   choices = g1Select()
-    # )})
+
     observe({
       values$p <- plotting_volcano(groupcomparison_data$groupcomp_data)
     }) %>% bindEvent(input$plotvolc)
-    
-    # # if(!is.null(p)) p
-    # return(reactive(values$p))
     
     output$plot_output <- renderPlot({
       values$p
