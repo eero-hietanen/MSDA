@@ -10,23 +10,40 @@ plotting_ui <- function(id) {
   tagList(
 
     actionButton(ns("plotvolc"), "Volcano plot of DE genes"),
+    actionButton(ns("plotvolc2"), "EnhancedVolcano plot"),
     
   )
 }
 
-plotting_server <- function(id, groupcomparison_data) {
+plotting_server <- function(id, dataprocess_data) {
   
   moduleServer(id, function(input, output, session) {
 
-    values <- reactiveValues(p = NULL)
+    values <- reactiveValues(p1 = NULL, p2 = NULL)
 
     observe({
-      values$p <- plotting_volcano(groupcomparison_data$groupcomp_data)
+      values$p1 <- plotting_volcano(dataprocess_data$groupcomp_data)
     }) %>% bindEvent(input$plotvolc)
     
+    observe({
+      values$p2 <- plotting_volcano2(dataprocess_data$uniprot_data)
+    }) %>% bindEvent(input$plotvolc2)
+    
     output$plot_output <- renderPlot({
-      values$p
+      values$p1
     })
+
+    output$plot_output2 <- renderPlot({
+      values$p2
+    })
+    
+    # observeEvent(input$plotvolc, {
+    #   output$plot_output <- renderPlot({ values$p1 })
+    # })
+    # 
+    # observeEvent(input$plotvolc2, {
+    #   output$plot_output2 <- renderPlot({ values$p2 })
+    # })
     
   })
 }

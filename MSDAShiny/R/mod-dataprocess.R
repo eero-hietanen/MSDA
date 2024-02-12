@@ -4,6 +4,16 @@
 # once initial processing module works add a way to select different
 # groups for comparisons
 
+# TODO:
+#  - Add options for using a reference channel
+#  - Add a comparison selection function, i.e. if there are more groups than just
+#    standard 'control' and 'sample'
+#  - Add an export function for the UniProt data table
+#  - QC plotting options?
+#  - Adjustable cutoff values for VolcanoPlot
+#  - VolcanoPlot image export
+#  - Check https://laustep.github.io/stlahblog/posts/DTcallbacks.html for useful data table callbacks
+
 dataprocess_ui <- function(id) {
   
   ns <- NS(id)
@@ -22,7 +32,8 @@ dataprocess_server <- function(id, dataupload_data) {
 
   moduleServer(id, function(input, output, session) {
     
-    values <- reactiveValues(groupcomp_data = NULL)
+    values <- reactiveValues(groupcomp_data = NULL, uniprot_data = NULL)
+    
     
     observe({
       values$groupcomp_data <- data_groupcomparisons(dataupload_data$preprocessed_data)
@@ -30,6 +41,12 @@ dataprocess_server <- function(id, dataupload_data) {
     
     observe({
       # call util func to fetch uniprot data and construct table; returns the table
+      req(values$groupcomp_data)
+      taxa <- input$taxID
+      validate(
+        need(input$taxID != "", "Please enter text.")
+      )
+      values$uniprot_data <- uniprot_fetch(values$groupcomp_data, taxa)
     }) %>% bindEvent(input$uniprottable)
     
     output$groupcomp_table <- renderDT(values$groupcomp_data)

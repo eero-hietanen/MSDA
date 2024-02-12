@@ -15,6 +15,7 @@ library(UniProt.ws)
 library(DT)
 library(bslib)
 library(tidyverse)
+library(EnhancedVolcano)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
 # options(shiny.error = NULL)
@@ -42,11 +43,12 @@ ui <- fluidPage(
         tabsetPanel(id = "output_tables", type = "pills",
                     tabPanel(id = "preprocessed_table", "Preprocessed data", DTOutput("preprocessed_table")),
                     tabPanel(id = "groupcomp_table", "Group comp data", DTOutput("groupcomp_table")),
+                    tabPanel(id = "uniprot_table", "Uniprot data", DTOutput("uniprot_table")),
                     tabPanel(id = "plot_output", "Volcano Plot", plotOutput("plot_output")),
+                    tabPanel(id = "plot_output2", "Enhanced Volc. Plot", plotOutput("plot_output2")),
         )
     )
   )
-
 )
 
 server <- function(input, output, session) {
@@ -58,7 +60,9 @@ server <- function(input, output, session) {
   
   output$preprocessed_table <- renderDT(upload_values$preprocessed_data)
   output$groupcomp_table <- renderDT(dataprocess_values$groupcomp_data)
-  output$plot_output <- plotting_values
+  output$uniprot_table <- renderDT(dataprocess_values$uniprot_data)
+  output$plot_output <- plotting_values$p1
+  output$plot_output2 <- plotting_values$p2
 
 }
 
