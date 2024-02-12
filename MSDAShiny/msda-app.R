@@ -7,6 +7,7 @@
 library(shiny)
 library(shinyjs)
 library(shinybusy)
+library(shinyFeedback)
 library(MSstats)
 library(MSstatsTMT)
 library(MSstatsConvert)
@@ -23,6 +24,7 @@ options(shiny.maxRequestSize = 40 * 1024^2)
 ui <- fluidPage(
   
   useShinyjs(),
+  useShinyFeedback(),
   theme = bs_theme(bootswatch = "flatly"),
   
   #Check shinyjs and hidden ('shinyjs::hidden') as a way to initialize hidden UI
@@ -46,6 +48,7 @@ ui <- fluidPage(
                     tabPanel(id = "uniprot_table", "Uniprot data", DTOutput("uniprot_table")),
                     tabPanel(id = "plot_output", "Volcano Plot", plotOutput("plot_output")),
                     tabPanel(id = "plot_output2", "Enhanced Volc. Plot", plotOutput("plot_output2")),
+                    tabPanel(id = "uniprot_species", "Uniprot species", DTOutput("uniprot_species")),
         )
     )
   )
@@ -56,15 +59,14 @@ server <- function(input, output, session) {
   upload_values <- dataupload_server("upload")
 
   dataprocess_values <- dataprocess_server("process", upload_values)
-  plotting_values <- plotting_server("plotting", dataprocess_values) # plot function in utils.R works, but module communication has a problem
+  plotting_values <- plotting_server("plotting", dataprocess_values)
   
   output$preprocessed_table <- renderDT(upload_values$preprocessed_data)
   output$groupcomp_table <- renderDT(dataprocess_values$groupcomp_data)
   output$uniprot_table <- renderDT(dataprocess_values$uniprot_data)
-  # output$plot_output <- plotting_values$p1
-  # output$plot_output2 <- plotting_values$p2
-  output$plot_output <- renderPlot({ plotting_values$p1 })
-  output$plot_output2 <- renderPlot({ plotting_values$p2 })
+  output$uniprot_species <- renderDT(dataprocess_values$uniprot_species)
+  output$plot_output <- renderPlot(plotting_values$p1)
+  output$plot_output2 <- renderPlot(plotting_values$p2)
 
 }
 

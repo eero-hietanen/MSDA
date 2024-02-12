@@ -133,7 +133,7 @@ comparisonResult <- test.pairwise$ComparisonResult
 # # Build UniProt.ws object with hamster database, query Uniprot and fetch
 # # GO terms and protein descriptions for each accession. Full list of UniProtKB
 # # return fields listed at https://www.uniprot.org/help/return_fields.
-# # Chinese hamster taxon ID = 10029, obtained with 'availableUniprotSpecies(pattern="greseus")
+# # Chinese hamster taxon ID = 10029, obtained with 'availableUniprotSpecies(pattern="griseus")
 # 
 # taxDB <- UniProt.ws(taxID)
 # uniprotResult <- UniProt.ws::select(x = taxDB, keys=accessionList, columns=c("protein_name", "go"))

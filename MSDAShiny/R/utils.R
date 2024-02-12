@@ -1,3 +1,7 @@
+#######################################
+# ----- MSstats data processing ----- #
+#######################################
+
 # Preprocess the data based on inputs from data upload server.
 # Returns the processed data from PhilosophertoMSstatsTMTFormat.
 
@@ -16,6 +20,10 @@ data_preprocessing <- function(evidence, annotation) {
   
 }
 
+#########################################
+# ----- MSstats group comparisons ----- #
+#########################################
+
 # Performs group comparisons and pairwise testing based on the preprocessed data.
 # Requires the output of data_preprocessing().
 # Returns a group comparison data frame.
@@ -30,6 +38,10 @@ data_groupcomparisons <- function(input) {
   
   test.pairwise$ComparisonResult
 }
+
+#####################################
+# ----- Volcano plot (manual) ----- #
+#####################################
 
 # Volcano plot through ggplot2. Requires comparisonResult from group comparisons
 # Default cutoff = 0.05.
@@ -56,13 +68,20 @@ plotting_volcano <- function(input, cutoff = 0.05) {
   p
 }
 
-# using EnhancedVolcano for plot generation
+##############################################
+# ----- Volcano plot (EnhancedVolcano) ----- #
+##############################################
+
 plotting_volcano2 <- function(input, cutoff = 0.05) {
   
   plotdf <- input
   
   EnhancedVolcano(plotdf, lab=plotdf$Protein, x="log2FC", y="adj.pvalue")
 }
+
+##################################
+# ----- UniProt data fetch ----- #
+##################################
 
 # Fetch GO terms (gene names) from UniProt. Should like be called from the "dataprocess" module.
 # The table returned by this function should be reminiscent of the "merged_results"
@@ -119,3 +138,15 @@ uniprot_fetch <- function(input, taxID) { # add dataCols input, which is a list 
 
 }
 
+####################################
+# ----- UniProt species fetch -----#
+####################################
+
+uniprotSpecies <- function(input, pattern) {
+  
+  cat("called species fetch with pattern: ", pattern)
+  speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = pattern)
+  
+  speciesTable
+  
+}
