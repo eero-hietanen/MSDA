@@ -61,7 +61,7 @@ plotting_volcano2 <- function(input, cutoff = 0.05) {
   
   plotdf <- input
   
-  EnhancedVolcano(names(plotdf), plotdf$log2FC, plotdf$adj.pval)
+  EnhancedVolcano(plotdf, lab=plotdf$Protein, x="log2FC", y="adj.pvalue")
 }
 
 # Fetch GO terms (gene names) from UniProt. Should like be called from the "dataprocess" module.

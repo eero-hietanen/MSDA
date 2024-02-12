@@ -61,8 +61,10 @@ server <- function(input, output, session) {
   output$preprocessed_table <- renderDT(upload_values$preprocessed_data)
   output$groupcomp_table <- renderDT(dataprocess_values$groupcomp_data)
   output$uniprot_table <- renderDT(dataprocess_values$uniprot_data)
-  output$plot_output <- plotting_values$p1
-  output$plot_output2 <- plotting_values$p2
+  # output$plot_output <- plotting_values$p1
+  # output$plot_output2 <- plotting_values$p2
+  output$plot_output <- renderPlot({ plotting_values$p1 })
+  output$plot_output2 <- renderPlot({ plotting_values$p2 })
 
 }
 

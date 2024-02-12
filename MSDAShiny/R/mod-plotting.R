@@ -29,21 +29,7 @@ plotting_server <- function(id, dataprocess_data) {
       values$p2 <- plotting_volcano2(dataprocess_data$uniprot_data)
     }) %>% bindEvent(input$plotvolc2)
     
-    output$plot_output <- renderPlot({
-      values$p1
-    })
-
-    output$plot_output2 <- renderPlot({
-      values$p2
-    })
-    
-    # observeEvent(input$plotvolc, {
-    #   output$plot_output <- renderPlot({ values$p1 })
-    # })
-    # 
-    # observeEvent(input$plotvolc2, {
-    #   output$plot_output2 <- renderPlot({ values$p2 })
-    # })
+    values
     
   })
 }
