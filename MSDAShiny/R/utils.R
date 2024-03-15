@@ -142,7 +142,7 @@ uniprot_fetch <- function(input, taxID) { # add dataCols input, which is a list 
 # ----- UniProt species fetch -----#
 ####################################
 
-uniprotSpecies <- function(input, pattern) {
+uniprot_fetch_species <- function(input, pattern) {
   
   cat("called species fetch with pattern: ", pattern)
   speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = pattern)

@@ -17,12 +17,13 @@
 
 dataprocess_ui <- function(id) {
   
+  useShinyjs()
   ns <- NS(id)
 
-  fluidPage(
-    textInput(ns("taxID"), "UniProt taxa ID or species name (can be partial)"),
-    actionButton(ns("groupcomparisons"), "Perform group comparisons"),
-    actionButton(ns("uniprottable"), "Fetch UniProt data or species taxa ID list"),
+  tagList(
+    actionButton(ns("groupcomparisons"), "Perform group comparisons", style="margin-bottom: 5px;"),
+    shinyjs::hidden(textInput(ns("taxID"), "UniProt taxa ID or species name (can be partial)")),
+    shinyjs::hidden(actionButton(ns("uniprottable"), "Fetch UniProt data or species taxa ID list", style="margin-bottom: 5px;")),
   )
 }
 
@@ -38,6 +39,16 @@ dataprocess_server <- function(id, dataupload_data) {
       values$groupcomp_data <- data_groupcomparisons(dataupload_data$preprocessed_data)
     }) %>% bindEvent(input$groupcomparisons)
     
+    # observe block gets triggered correctly, but the shinyjs::show function doesn't work
+    # check conditionalPanel for controlling the UI elements
+    observe({
+      if (input$groupcomparisons > 0) {
+        cat("shinyjs button test")
+        shinyjs::show("taxID", asis = TRUE)
+        shinyjs::show("uniprottable", asis = TRUE)
+      }
+    })
+    
     observe({
       # call util func to fetch uniprot data and construct table; returns the table
       req(values$groupcomp_data) # this could be changed to validate() to check if groupcomp_data is NULL or not
@@ -46,12 +57,11 @@ dataprocess_server <- function(id, dataupload_data) {
         showFeedbackWarning("taxID", "Taxonomic ID or at least partial species name is required")  
       } else if (!grepl("^\\d+$", input$taxID)) { # if the input is not numeric, treat it as a species name pattern and fetch uniprot taxa IDs based on it
         hideFeedback("taxID")
-        values$uniprot_species <- uniprotSpecies(pattern = input$taxID)
+        values$uniprot_species <- uniprot_fetch_species(pattern = input$taxID)
       } else { # finally, if a numeric value is given use it as the taxa ID to fetch uniprot data; TODO: this should still be validated so that the user cannot submit alphanumeric values etc.
         hideFeedback("taxID")
         values$uniprot_data <- uniprot_fetch(values$groupcomp_data, input$taxID)
       }
-      
     }) %>% bindEvent(input$uniprottable)
     
     values

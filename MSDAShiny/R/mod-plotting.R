@@ -3,8 +3,10 @@
 # add a way to select plotted targets, e.g., full groups or just specific
 # proteins (for QC plots)
 
+
 plotting_ui <- function(id) {
   
+  useShinyjs()
   ns <- NS(id)
   
   tagList(

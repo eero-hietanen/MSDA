@@ -3,6 +3,7 @@
 
 dataupload_ui <- function(id) {
   
+  useShinyjs()
   ns <- NS(id)
 
   tagList(
