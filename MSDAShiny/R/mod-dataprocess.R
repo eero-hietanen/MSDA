@@ -40,12 +40,15 @@ dataprocess_server <- function(id, dataupload_data) {
     }) %>% bindEvent(input$groupcomparisons)
     
     # observe block gets triggered correctly, but the shinyjs::show function doesn't work
+    # using showElement() works for enabling the taxID and uniprottable UI elements
     # check conditionalPanel for controlling the UI elements
     observe({
       if (input$groupcomparisons > 0) {
-        cat("shinyjs button test")
-        shinyjs::show("taxID", asis = TRUE)
-        shinyjs::show("uniprottable", asis = TRUE)
+        # cat("shinyjs button test")
+        showElement("taxID")
+        showElement("uniprottable")
+        # shinyjs::show("taxID", asis = TRUE)
+        # shinyjs::show("uniprottable", asis = TRUE)
       }
     })
     

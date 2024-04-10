@@ -16,6 +16,8 @@ library(DT)
 library(bslib)
 library(tidyverse)
 library(EnhancedVolcano)
+library(ggplot2)
+library(plotly)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
 # options(shiny.error = NULL)
@@ -52,7 +54,7 @@ ui <- fluidPage(
                       sidebarLayout(
                         sidebarPanel(plotting_ui("plotting"), width = 2),
                         mainPanel(
-                          plotOutput("plot_output"),
+                          plotlyOutput("plot_output"),
                           plotOutput("plot_output2"),
                         )
                       ),
@@ -86,19 +88,22 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session) {
-
+  
   upload_values <- dataupload_server("upload")
-
+  
   dataprocess_values <- dataprocess_server("process", upload_values)
+  
+  # Call the server function of the plotting module
   plotting_values <- plotting_server("plotting", dataprocess_values)
   
   output$preprocessed_table <- renderDT(upload_values$preprocessed_data)
   output$groupcomp_table <- renderDT(dataprocess_values$groupcomp_data)
   output$uniprot_table <- renderDT(dataprocess_values$uniprot_data)
   output$uniprot_species <- renderDT(dataprocess_values$uniprot_species)
-  output$plot_output <- renderPlot(plotting_values$p1)
+  output$plot_output <- renderPlotly(plotting_values$p1)
   output$plot_output2 <- renderPlot(plotting_values$p2)
-
+ 
 }
+
 
 shinyApp(ui, server)

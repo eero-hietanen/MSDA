@@ -10,7 +10,7 @@ plotting_ui <- function(id) {
   ns <- NS(id)
   
   tagList(
-
+    
     actionButton(ns("plotvolc"), "Volcano plot of DE genes"),
     actionButton(ns("plotvolc2"), "EnhancedVolcano plot"),
     
@@ -20,13 +20,15 @@ plotting_ui <- function(id) {
 plotting_server <- function(id, dataprocess_data) {
   
   moduleServer(id, function(input, output, session) {
-
+    
     values <- reactiveValues(p1 = NULL, p2 = NULL)
-
+    
     observe({
       values$p1 <- plotting_volcano(dataprocess_data$groupcomp_data)
     }) %>% bindEvent(input$plotvolc)
     
+    # EnhancedVolcano() plotting. Works with the assembled results table generated through uniprot_fetch(), but not with
+    # direct result table from group comparisons (complains about log2FC not being numeric).
     observe({
       values$p2 <- plotting_volcano2(dataprocess_data$uniprot_data)
     }) %>% bindEvent(input$plotvolc2)
