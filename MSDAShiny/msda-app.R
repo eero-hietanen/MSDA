@@ -18,6 +18,7 @@ library(tidyverse)
 library(EnhancedVolcano)
 library(ggplot2)
 library(plotly)
+library(gridlayout)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
 # options(shiny.error = NULL)
@@ -33,33 +34,9 @@ ui <- fluidPage(
   # titlePanel("MSDA Shiny"),
   
   navbarPage("MSDA Shiny",
-             tabPanel("Data upload",
-                      sidebarLayout(
-                        sidebarPanel(dataupload_ui("upload"), width = 2),
-                        mainPanel(DTOutput("preprocessed_table"))
-                      )
-             ),
-             tabPanel("Data processing",
-                      sidebarLayout(
-                        sidebarPanel(dataprocess_ui("process"), width = 2),
-                        mainPanel(
-                          DTOutput("groupcomp_table"),
-                          DTOutput("uniprot_table"),
-                          DTOutput("uniprot_species"),
-                          )
-                      ),
-                      
-             ),
-             tabPanel("Plotting",
-                      sidebarLayout(
-                        sidebarPanel(plotting_ui("plotting"), width = 2),
-                        mainPanel(
-                          plotlyOutput("plot_output"),
-                          plotOutput("plot_output2"),
-                        )
-                      ),
-                      
-             ),
+             tabPanel("Data upload", dataupload_ui("upload")),
+             tabPanel("Data processing", dataprocess_ui("process")),
+             tabPanel("Plotting", plotting_ui("plotting")),
   )
   
                         
@@ -96,12 +73,15 @@ server <- function(input, output, session) {
   # Call the server function of the plotting module
   plotting_values <- plotting_server("plotting", dataprocess_values)
   
-  output$preprocessed_table <- renderDT(upload_values$preprocessed_data)
-  output$groupcomp_table <- renderDT(dataprocess_values$groupcomp_data)
-  output$uniprot_table <- renderDT(dataprocess_values$uniprot_data)
-  output$uniprot_species <- renderDT(dataprocess_values$uniprot_species)
-  output$plot_output <- renderPlotly(plotting_values$p1)
-  output$plot_output2 <- renderPlot(plotting_values$p2)
+  # output$preprocessed_table <- renderDT(upload_values$preprocessed_data) # output in mod-dataupload
+  
+  #check why these 3 don't show up if they're disabled in the main app (compare to dataupload module, which works)
+  # output$groupcomp_table <- renderDT(dataprocess_values$groupcomp_data) # output in mod-dataprocess
+  # output$uniprot_table <- renderDT(dataprocess_values$uniprot_data) # output in mod-dataprocess
+  # output$uniprot_species <- renderDT(dataprocess_values$uniprot_species) # output in mod-dataprocess
+  # 
+  # output$plot_output <- renderPlotly(plotting_values$p1) # output in mod-plotting
+  # output$plot_output2 <- renderPlot(plotting_values$p2) # output in mod-plotting
  
 }
 

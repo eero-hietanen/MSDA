@@ -65,7 +65,7 @@ plotting_volcano <- function(input, cutoff = 0.05) {
   #copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
   #check 'ggrepel' library and the geom_text_repel() function for label placement
   
-  p <- ggplotly(p)
+  p
 }
 
 ##############################################

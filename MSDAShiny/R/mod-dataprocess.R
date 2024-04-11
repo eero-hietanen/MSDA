@@ -21,9 +21,17 @@ dataprocess_ui <- function(id) {
   ns <- NS(id)
 
   tagList(
-    actionButton(ns("groupcomparisons"), "Perform group comparisons", style="margin-bottom: 5px;"),
-    shinyjs::hidden(textInput(ns("taxID"), "UniProt taxa ID or species name (can be partial)")),
-    shinyjs::hidden(actionButton(ns("uniprottable"), "Fetch UniProt data or species taxa ID list", style="margin-bottom: 5px;")),
+    sidebarPanel(
+      actionButton(ns("groupcomparisons"), "Perform group comparisons", style="margin-bottom: 5px;"),
+      shinyjs::hidden(textInput(ns("taxID"), "UniProt taxa ID or species name (can be partial)")),
+      shinyjs::hidden(actionButton(ns("uniprottable"), "Fetch UniProt data or species taxa ID list", style="margin-bottom: 5px;")),
+    ),
+    mainPanel(
+      DTOutput(ns("groupcomp_table")),
+      DTOutput(ns("uniprot_table")),
+      DTOutput(ns("uniprot_species")),
+    ),
+
   )
 }
 
@@ -66,6 +74,10 @@ dataprocess_server <- function(id, dataupload_data) {
         values$uniprot_data <- uniprot_fetch(values$groupcomp_data, input$taxID)
       }
     }) %>% bindEvent(input$uniprottable)
+    
+    output$groupcomp_table <- renderDT(values$groupcomp_data)
+    output$uniprot_table <- renderDT(values$uniprot_data)
+    output$uniprot_species <- renderDT(values$uniprot_species)
     
     values
     
