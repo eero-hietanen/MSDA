@@ -55,7 +55,7 @@ plotting_volcano <- function(input, cutoff = 0.05) {
   plotdf$diffexp[plotdf$log2FC > 0.5 & plotdf$adj.pvalue < 0.05] <- "UP"
   plotdf$diffexp[plotdf$log2FC < -0.5 & plotdf$adj.pvalue < 0.05] <- "DOWN"
   #set up base plot; note to log-transform p-value
-  p <- ggplot(plotdf, aes(x=log2FC, y=-log10(adj.pvalue), col=diffexp)) + geom_point()
+  p <- ggplot(plotdf, aes(x=log2FC, y=-log10(adj.pvalue), col=diffexp, text = plotdf$Protein)) + geom_point()
   #add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
   p <- p + geom_vline(xintercept = c(-0.5, 0.5), col="red") + geom_hline(yintercept = -log10(0.05), col="red")
   #adjust colour mapping
@@ -144,6 +144,7 @@ uniprot_fetch <- function(input, taxID) { # add dataCols input, which is a list 
 
 uniprot_fetch_species <- function(input, pattern) {
   
+  #FIXME: The search breaks slightly based on capitalization. E.g., searching Cricetulus finds the right taxa (ID: 10029), but searching cricetulus does not.
   cat("called species fetch with pattern: ", pattern)
   speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = pattern)
   

@@ -9,16 +9,53 @@ plotting_ui <- function(id) {
   useShinyjs()
   ns <- NS(id)
   
-  tagList(
-    sidebarPanel(
-      actionButton(ns("plotvolc"), "Volcano plot of DE genes"),
-      actionButton(ns("plotvolc2"), "EnhancedVolcano plot"),
-      selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
+  grid_container(
+    layout = c(
+      "plotting_side plotting_main"
     ),
-    mainPanel(
-      plotOutput(ns("plot_output")),
+    row_sizes = c(
+      "1fr"
     ),
+    col_sizes = c(
+      "260px",
+      "1fr"
+    ),
+    gap_size = "10px",
+    grid_card(
+      area = "plotting_side",
+      card_header = "Settings",
+      card_body(
+        actionButton(ns("plotvolc"), "Volcano plot of DE genes"),
+        actionButton(ns("plotvolc2"), "EnhancedVolcano plot"),
+        selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
+      )
+    ),
+    grid_card(
+      area = "plotting_main",
+      card_body(
+        plotlyOutput(ns("plot_output")),
+      )
+    )
+  
+    # Easy way to generate a plot output if using the default renderPlot() in the server function. Doesn't work if using plotly.
+    # grid_card_plot(
+    #   area = "plotting_main",
+    #   outputId = ns("plot_output"),
+    # )
+    
+    
   )
+  
+  # tagList(
+  #   sidebarPanel(
+  #     actionButton(ns("plotvolc"), "Volcano plot of DE genes"),
+  #     actionButton(ns("plotvolc2"), "EnhancedVolcano plot"),
+  #     selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
+  #   ),
+  #   mainPanel(
+  #     plotOutput(ns("plot_output")),
+  #   ),
+  # )
 }
 
 plotting_server <- function(id, data) {
@@ -51,10 +88,12 @@ plotting_server <- function(id, data) {
       rv$p2 <- plotting_volcano2(data$uniprot_data)
     }) %>% bindEvent(input$plotvolc2)
     
-    output$plot_output <- renderPlot({
-      validate(
-        need(is.null(plots), "Waiting for plots.")
-      )
+    output$plot_output <- renderPlotly({
+      # FIXME: Find a way to validate the plot output so that it's not done if 
+      #        there is no data to plot.
+      # validate(
+      #   need(is.null(plots), "Waiting for plots.")
+      # )
       plot <- plots[[input$plot_select]]
       plot
     })
