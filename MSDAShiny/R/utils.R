@@ -4,11 +4,13 @@
 
 # Preprocess the data based on inputs from data upload server.
 # Returns the processed data from PhilosophertoMSstatsTMTFormat.
+# TODO: Add QC plots through dataProcessPlots()?
 
 data_preprocessing <- function(evidence, annotation) {
   
   req(list=c(evidence, annotation))
-  show_modal_spinner(spin = "orbit", color = "#1b7f94")
+  # TODO: Fix the background color of the busy popup / spinner element
+  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#7d2ac9")
 
   evidence <- read_delim(evidence$datapath)
   annotation <- read_delim(annotation$datapath)
@@ -30,7 +32,8 @@ data_preprocessing <- function(evidence, annotation) {
 
 data_groupcomparisons <- function(input) {
   
-  show_modal_spinner(spin = "orbit", color = "#1b7f94")
+  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#7d2ac9")
+  # Check if the proteinSummarization option 'maxQuantilieforCensored' does anything with the NA data filtering
   quant.msstats <- proteinSummarization(input, reference_norm = FALSE, use_log_file = FALSE)
   test.pairwise <- groupComparisonTMT(quant.msstats, moderated = TRUE, use_log_file = FALSE)
   
@@ -45,39 +48,47 @@ data_groupcomparisons <- function(input) {
 
 # Volcano plot through ggplot2. Requires comparisonResult from group comparisons
 # Default cutoff = 0.05.
+# TODO: Check plotting through groupComparisonPlots()
 
-plotting_volcano <- function(input, cutoff = 0.05) {
+plotting_volcano <- function(input, ...) {
+  
+  args <- unlist(list(...))
   
   #set up a df for the plotting values
   plotdf <- input
   #add a categorical column for up/down regulated genes; default value "NS"
   plotdf$diffexp <- "NS"
-  plotdf$diffexp[plotdf$log2FC > 0.5 & plotdf$adj.pvalue < 0.05] <- "UP"
-  plotdf$diffexp[plotdf$log2FC < -0.5 & plotdf$adj.pvalue < 0.05] <- "DOWN"
+  # Changed the log2FC vals from 0.5 to 0.6, also for xintercept below (geom_vline()); change back if wrong; check standard log2FC cutoff
+  plotdf$diffexp[plotdf$log2FC > as.numeric(args[["plot_fccutoff"]]) & plotdf$adj.pvalue < as.numeric(args[["plot_pcutoff"]])] <- "Up-regulated"
+  # as.numeric is done for the negative value because otherwise the plotting function breaks 
+  plotdf$diffexp[plotdf$log2FC < -as.numeric(args[["plot_fccutoff"]]) & plotdf$adj.pvalue < as.numeric(args[["plot_pcutoff"]])] <- "Down-regulated"
   #set up base plot; note to log-transform p-value
-  p <- ggplot(plotdf, aes(x=log2FC, y=-log10(adj.pvalue), col=diffexp, text = plotdf$Protein)) + geom_point()
+  p <- ggplot(plotdf, aes(x=log2FC, y=-log10(adj.pvalue), col=factor(diffexp), text = plotdf$Protein)) + geom_point()
   #add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
-  p <- p + geom_vline(xintercept = c(-0.5, 0.5), col="red") + geom_hline(yintercept = -log10(0.05), col="red")
+  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="red") + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="red") + xlab("log2FC") + ylab("adjusted p.value") + labs(color="")
   #adjust colour mapping
-  p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
+  # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
   
   #names for DE genes can be toggled by adding another column to the 'plotdf' and
   #copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
   #check 'ggrepel' library and the geom_text_repel() function for label placement
   
-  p
+  # Return a list with the plot p and the plotdf. Use plotdf as the data table and enable download signif. proteins through it.
+  return(list(p = p, plotdf = plotdf))
+  # p
 }
 
-##############################################
-# ----- Volcano plot (EnhancedVolcano) ----- #
-##############################################
-
-plotting_volcano2 <- function(input, cutoff = 0.05) {
-  
-  plotdf <- input
-  
-  EnhancedVolcano(plotdf, lab=plotdf$Protein, x="log2FC", y="adj.pvalue")
-}
+# ##############################################
+# # ----- Volcano plot (EnhancedVolcano) ----- #
+# ##############################################
+# 
+# plotting_volcano2 <- function(input, ...) {
+#   
+#   plotdf <- input
+#   args <- list(...)
+#   
+#   EnhancedVolcano(plotdf, lab=plotdf$Protein, x="log2FC", y="adj.pvalue", title = args$plot_title, pCutoff = args$plot_pcutoff, FCcutoff = args$plot_fccutoff)
+# }
 
 ##################################
 # ----- UniProt data fetch ----- #
@@ -88,14 +99,14 @@ plotting_volcano2 <- function(input, cutoff = 0.05) {
 # from the original R script. This table should also act as a basis for the plotting functions
 # as it has more available data, such as gene names that can act as better labels for DE genes.
 
-uniprot_fetch <- function(input, taxID) { # add dataCols input, which is a list of UniProt fields
+uniprot_fetch <- function(input, taxID, cols) { # add dataCols input, which is a list of UniProt fields
   
   # function to fetch UniProt data and construct a final results table similar to what's
   # in the original script file.
   # requires 'taxID' and 'dataCols' as inputs to determine which organism to fetch the data for
   # what which UniProt fields should be fetched for the final table.
   
-  show_modal_spinner(spin = "orbit", color = "#1b7f94")
+  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#7d2ac9")
   
   # cat("Fetching with: ", taxID) # Test message to R console
   
@@ -111,8 +122,8 @@ uniprot_fetch <- function(input, taxID) { # add dataCols input, which is a list 
   # Chinese hamster taxon ID = 10029, obtained with 'availableUniprotSpecies(pattern="greseus")
 
   taxDB <- UniProt.ws(taxID)
-  # Columns below should be a set by user input
-  uniprotResult <- UniProt.ws::select(x = taxDB, keys=accessionList, columns=c("protein_name", "go"))
+  # Split cols character string by whitespace and unlist the result to retrieve a vector
+  uniprotResult <- UniProt.ws::select(x = taxDB, keys=accessionList, columns=unlist(strsplit(cols, " ")))
 
   # Merge UniProt results with existing comparison results.
 

@@ -3,17 +3,22 @@
 # add a way to select plotted targets, e.g., full groups or just specific
 # proteins (for QC plots)
 
+# TODO: Implement accordions in the main panel. Put plot output in one, DT output in the other.
+#       Link plot and DT so that selection <-> plot highlight work. Implement download of up/down reg. proteins.
+# TODO: The plotting options for pval and FC cutoff need clarification regarding what the number is (e.g. some log of |2FC|?)
 
 plotting_ui <- function(id) {
   
   useShinyjs()
   ns <- NS(id)
-  
+
   grid_container(
     layout = c(
-      "plotting_side plotting_main"
+      "plotting_side plotting_main_top",
+      "plotting_side plotting_main_bottom"
     ),
     row_sizes = c(
+      "3fr",
       "1fr"
     ),
     col_sizes = c(
@@ -21,84 +26,156 @@ plotting_ui <- function(id) {
       "1fr"
     ),
     gap_size = "10px",
+    # This side panel should probably be a sideBarPanel so that it's collapsible
+    # To change the UI layout to a collapsible sidebar use layout_sidebar() and put the UI code starting from the
+    # grid_card() element inside of it. Set grid_card() you want in the sidebar with sidebar = grid_card(...), and then
+    # continue with the "main panel" grid_card().
+    # This approach leaves out the grid_container section above.
+    #  layout_sidebar(
+    #     sidebar = grid_card(
+    #         area = "plotting_side", ...
+    
     grid_card(
       area = "plotting_side",
       card_header = "Settings",
       card_body(
-        actionButton(ns("plotvolc"), "Volcano plot of DE genes"),
-        actionButton(ns("plotvolc2"), "EnhancedVolcano plot"),
         selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
+      accordion(
+        accordion_panel("Plot options",
+                        textInput(ns("plot_title"), label = "Title"),
+                        numericInput(ns("plot_pcutoff"), label = "p-value cutoff", value = 0.05, step = 0.01),
+                        numericInput(ns("plot_fccutoff"), label = "FC cutoff", value = 0.6, step = 0.1),
+        ),
+      ),
+      tags$hr(),
+      actionButton(ns("make_plot"),
+                   "Volcano plot",
+                   width = "100%"
+                   ),
+      shinyjs::hidden(downloadButton(ns("data_download"), "Download table")),
       )
     ),
     grid_card(
-      area = "plotting_main",
+      area = "plotting_main_top",
+      full_screen = TRUE,
       card_body(
-        plotlyOutput(ns("plot_output")),
+        accordion(
+          accordion_panel("Plot",
+            plotlyOutput(ns("plot_output")),
+            id = "plot_panel"
+          ), width = "50%"
+        ),
+      )
+    ),
+    grid_card(
+      area = "plotting_main_bottom",
+      full_screen = TRUE,
+      card_body(
+        accordion(
+          accordion_panel("Data",
+                          DTOutput(outputId = ns("plot_table"), width = "100%"),
+                          id = "data_panel"
+          )
+        )
       )
     )
-  
-    # Easy way to generate a plot output if using the default renderPlot() in the server function. Doesn't work if using plotly.
-    # grid_card_plot(
-    #   area = "plotting_main",
-    #   outputId = ns("plot_output"),
-    # )
-    
-    
   )
-  
-  # tagList(
-  #   sidebarPanel(
-  #     actionButton(ns("plotvolc"), "Volcano plot of DE genes"),
-  #     actionButton(ns("plotvolc2"), "EnhancedVolcano plot"),
-  #     selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
-  #   ),
-  #   mainPanel(
-  #     plotOutput(ns("plot_output")),
-  #   ),
-  # )
 }
 
 plotting_server <- function(id, data) {
   
   moduleServer(id, function(input, output, session) {
     
-    rv <- reactiveValues(counter = 0, p1 = NULL, p2 = NULL)
+    rv <- reactiveValues()
+    
+    rv$groupcomp_data <- reactive({data$groupcomp_data})
+    rv$uniprot_data <- reactive({data$uniprot_data})
+    counter <- reactiveVal(0)
     
     plots <- reactiveValues()
-    
+    tables <- reactiveValues()
+
     generate_plot <- function() {
-      rv$counter <- rv$counter + 1
-      plot <- plotting_volcano(data$groupcomp_data) # This should likely be changed once more data plotting options are established
-      plot_name <- paste("Plot", rv$counter)
-      plots[[plot_name]] <- plot
-      updateSelectInput(session, "plot_select", choices = names(plots))
+      additional_args <- list(plot_title = input$plot_title,
+                              plot_pcutoff = input$plot_pcutoff,
+                              plot_fccutoff = input$plot_fccutoff)
+      counter(counter() +1) # Note how reactiveVal() is being updated compared to reactiveValues() element
+      # When additional args are passed in this way, the varargs have to be unlisted in the plotting_volcano()
+      # after which the varargs can be accessed by, e.g., args[["plot_title"]].
+      # Another option is to use do.call(plotting_volcano, c(list(rv$groupcomp_data, additional_args))) which would
+      # allow retrieving the varargs through just args <- list(...) in the utils func and then accessing the varargs with, e.g., args$plot_title.
+      plot_data <- plotting_volcano(rv$groupcomp_data(), additional_args)
+      plot_name <- paste("Plot", counter())
+      plots[[plot_name]] <- plot_data[["p"]]
+      tables[[plot_name]] <- plot_data[["plotdf"]]
+      # Note the selection of the last element on the choices list by tail()
+      updateSelectInput(session, "plot_select", choices = names(plots), selected = tail(names(plots), 1))
     }
     
     observe({
       generate_plot()
-    }) %>% bindEvent(input$plotvolc)
-    
-    # observe({
-    #   rv$p1 <- plotting_volcano(data$groupcomp_data)
-    # }) %>% bindEvent(input$plotvolc)
-    
-    # EnhancedVolcano() plotting. Works with the assembled results table generated through uniprot_fetch(), but not with
-    # direct result table from group comparisons (complains about log2FC not being numeric).
-    observe({
-      rv$p2 <- plotting_volcano2(data$uniprot_data)
-    }) %>% bindEvent(input$plotvolc2)
+      shinyjs::show("data_download")
+    }) %>% bindEvent(input$make_plot)
     
     output$plot_output <- renderPlotly({
-      # FIXME: Find a way to validate the plot output so that it's not done if 
-      #        there is no data to plot.
-      # validate(
-      #   need(is.null(plots), "Waiting for plots.")
-      # )
-      plot <- plots[[input$plot_select]]
-      plot
+      req(!is.null(plots))
+      req(!is.null(input$plot_select) && input$plot_select != "")
+    
+      plot_plot <- plots[[input$plot_select]]
+      plot_plot
     })
     
-    # output$plot_output <- renderPlot(rv$p1)
+    output$plot_table <- renderDT({
+      req(!is.null(plots))
+      req(!is.null(input$plot_select) && input$plot_select != "")
+      
+      plot_table <- tables[[input$plot_select]]
+      datatable(
+        plot_table,
+        rownames = FALSE,
+        options = list(
+          scrollX = TRUE,
+          searching = TRUE,
+          pageLength = 25,
+          columnDefs = list(list(
+            targets = "_all",
+            render = JS(
+              "function(data, type, row, meta) {",
+              "return type === 'display' && data != null && data.length > 30 ?",
+              "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
+              "}"
+            )
+          ))
+        )
+      )
+    })
+    
+    # Works for downloading the whole plotdf. Edit so that selection is made for up- and down-regulated hits.
+    output$data_download <- downloadHandler(
+      filename = function() {
+        paste('significant_data-', Sys.Date(), '.csv', sep="")
+      },
+      content = function(file) {
+        write.csv(tables[[input$plot_select]], file, row.names = FALSE)
+      }
+    )
+    
+    # # --- CROSSTALK TEST -->
+    # 
+    # sharedDT <- SharedData$new(reactive(rv$groupcomp_data()))
+    # 
+    # # plot output has issues which have to do with the bindEvent; just use observe?
+    # generate_plot <- function() {
+    #   rv$counter <- rv$counter + 1
+    #   plot <- plotting_volcano(sharedDT) # This should likely be changed once more data plotting options are established
+    #   plot_name <- paste("Plot", rv$counter)
+    #   plots[[plot_name]] <- plot
+    #   updateSelectInput(session, "plot_select", choices = names(plots))
+    # }
+    # 
+    # output$plot_table <- renderDT({sharedDT}, server=FALSE) # DT from sharedDT is generated correctly
+    # 
+    # # <-- CROSSTALK TEST ---
     
     rv
     

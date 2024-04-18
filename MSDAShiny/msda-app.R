@@ -10,6 +10,10 @@
 #       The user should be directed to https://www.uniprot.org/help/return_fields, or make a list of all the field codes in the app.
 #       The user will then enter all the fields they want to retrieve (whitespace delimited). Parse the input and add each element to the
 #       query as a column to retrieve.
+# TODO: Fix busy spinner background.
+# TODO: Implement accordions to organize the side panel settings into logical groups
+# TODO: Adjust download button widths
+# TODO: Look into crosstalk library to link plots with DTs
 
 library(shiny)
 library(shinyjs)
@@ -26,13 +30,17 @@ library(bslib)
 library(tidyverse)
 library(EnhancedVolcano)
 library(ggplot2)
+library(ggrepel)
 library(plotly)
 library(gridlayout)
+library(thematic)
+library(crosstalk)
+library(colourpicker)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
 # options(shiny.error = NULL)
-useShinyjs() # moved up here to avoid errors with bslib layout
-useShinyFeedback() # moved up here to avoid errors with bslib layout
+thematic_shiny()
+theme_set(theme_minimal())
 
 # tagList(
 #   tags$head(
@@ -42,10 +50,14 @@ useShinyFeedback() # moved up here to avoid errors with bslib layout
 # )
 
 ui <- page_navbar(
-  
-  # useShinyjs(),
-  # useShinyFeedback(),
+
   # theme = bs_theme(bootswatch = "flatly"),
+  
+  # Loading things in the header due to bslib complaining otherwise and loading Shinyjs and feedback outside the UI doesn't work
+  header = tagList(
+    useShinyjs(),
+    useShinyFeedback()
+    ),
   
   # update params. for bs_theme_update were obtained through bs_themer().
   # also pipes to bs_add_rules() using |>, which is then used to update the CSS for, e.g., data tables
@@ -64,6 +76,8 @@ ui <- page_navbar(
   nav_panel("Data upload", dataupload_ui("upload")),
   nav_panel("Data processing", dataprocess_ui("process")),
   nav_panel("Plotting", plotting_ui("plotting")),
+  
+  padding = "3px",
 
   # fluidRow(
   # navlistPanel(

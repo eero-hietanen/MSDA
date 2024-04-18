@@ -17,7 +17,7 @@ dataupload_ui <- function(id) {
       "260px",
       "1fr"
     ),
-    gap_size = "10px",
+    gap_size = "3px",
     grid_card(
       area = "dataupload_side",
       card_header("Settings"),
@@ -43,13 +43,15 @@ dataupload_ui <- function(id) {
           inputId = ns("preprocess"),
           label = "Preprocess"
         ),
+        tags$hr(),
+        shinyjs::hidden(downloadButton(ns("data_download"), "Download table")),
       )
     ),
     grid_card(
       area = "dataupload_main",
       card_body(
         DTOutput(outputId = ns("preprocessed_table"), width = "100%"),
-        shinyjs::hidden(downloadButton(ns("data_download"), "Download table")),
+        # shinyjs::hidden(downloadButton(ns("data_download"), "Download", style = "width: 110px; padding: 5px; position:absolute; bottom: 5px; right: 50%")),
       )
     )
   )
@@ -88,12 +90,28 @@ dataupload_server <- function(id) {
     # Also need to pass input$proteingroups if MQ is selected. Look into adding '...' to funcs to pass arguments. Look into 'do.call' and passing the arguments as a list. If the list is named based on the input$[name], then should be able to parse based on that in the utils function.
     observe({
       rv$preprocessed_data <- data_preprocessing(input$evidence, input$annotation)
-      showElement("data_download")
+      shinyjs::show("data_download")
     }) %>% bindEvent(input$preprocess)
 
     
     output$preprocessed_table <- renderDT({
-      datatable(rv$preprocessed_data)
+      datatable(rv$preprocessed_data,
+                rownames = FALSE,
+                options = list(
+                  scrollX = TRUE,
+                  searching = TRUE,
+                  pageLength = 25,
+                  columnDefs = list(list(
+                    targets = "_all",
+                    render = JS(
+                      "function(data, type, row, meta) {",
+                      "return type === 'display' && data != null && data.length > 30 ?",
+                      "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
+                      "}"
+                    )
+                  ))
+                )
+      )
     })
     # reactive({
     #   list(preprocessed_data = rv$preprocessed_data)
@@ -104,7 +122,7 @@ dataupload_server <- function(id) {
         paste('preprocessed_data-', Sys.Date(), '.csv', sep="")
       },
       content = function(file) {
-        write.csv(rv$preprocessed_data, file)
+        write.csv(rv$preprocessed_data, file, row.names = FALSE)
       }
     )
     
