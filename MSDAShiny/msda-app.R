@@ -14,6 +14,8 @@
 # TODO: Implement accordions to organize the side panel settings into logical groups
 # TODO: Adjust download button widths
 # TODO: Look into crosstalk library to link plots with DTs
+# TODO: Look into adding a STRING graph/plot of the results.
+#       Libraries: STRINGdb, igraph, networkD3
 
 library(shiny)
 library(shinyjs)
@@ -28,7 +30,7 @@ library(UniProt.ws)
 library(DT)
 library(bslib)
 library(tidyverse)
-library(EnhancedVolcano)
+# library(EnhancedVolcano)
 library(ggplot2)
 library(ggrepel)
 library(plotly)
@@ -36,11 +38,16 @@ library(gridlayout)
 library(thematic)
 library(crosstalk)
 library(colourpicker)
+library(bsicons)
+library(STRINGdb)
+library(igraph)
+# library(V8)
+library(golem)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
 # options(shiny.error = NULL)
 thematic_shiny()
-theme_set(theme_minimal())
+ggplot2::theme_set(theme_minimal())
 
 # tagList(
 #   tags$head(
@@ -54,28 +61,54 @@ ui <- page_navbar(
   # theme = bs_theme(bootswatch = "flatly"),
   
   # Loading things in the header due to bslib complaining otherwise and loading Shinyjs and feedback outside the UI doesn't work
+  # Names of some UI elements can be found through browser inspect element function, e.g. to find 'navbar-brand'
   header = tagList(
     useShinyjs(),
-    useShinyFeedback()
+    useShinyFeedback(),
+    tags$style(
+      HTML("
+      .navbar-brand {
+      font-size: 40px;
+      }
+           ")
     ),
+    tags$script(src="https://string-db.org/javascript/combined_embedded_network_v2.0.4.js"),
+  ),
   
   # update params. for bs_theme_update were obtained through bs_themer().
   # also pipes to bs_add_rules() using |>, which is then used to update the CSS for, e.g., data tables
-  theme = bs_theme_update(bs_theme(bootswatch = "flatly"), bg = "rgb(249, 249, 249)", primary = "#34516D",
-                  success = "#8278AC", font_scale = NULL, `enable-rounded` = FALSE,
-                  fg = "#000") |> bs_add_rules(
-                    list(
-                      ".datatables td {padding-top: 2px; padding-bottom: 2px; font-size: 80%}"
-                        )
-                    ),
+  # For fonts/icons etc., check https://fonts.google.com
+  # FIXME: Fix the background colour in the theme when elements are expanded (fullscreen)
+  theme = bs_theme_update(bs_theme(preset = "bootstrap"),
+                          base_font = font_google("Roboto"),
+                          font_scale = 0.9,
+                          `enable-rounded` = TRUE) |> bs_add_rules(
+                            list(".datatables td {padding-top: 3px; padding-bottom: 3px; font-size: 80%}",
+                                 ".checkbox label {font-size: 90%; display:inline-block}")
+                            ),
+  
+  # vapor theme modifications
+  # something broke with the datatable row selection colour
+  # theme = bs_theme_update(bs_theme(bootswatch = "vapor"),
+  #                         base_font = font_google("Roboto"),
+  #                         font_scale = 0.9,
+  #                         `enable-rounded` = TRUE) |> bs_add_rules(
+  #                           list(".datatables td {padding-top: 3px; padding-bottom: 3px; font-size: 80%}",
+  #                                ".datatables td {--dt-row-selected: #ea39b8}",
+  #                                ":root {--bs-primary-bg-subtle: #1a0933}",
+  #                                ".accordion .accordion-header .accordion-title {color: var(--bs-cyan)}")
+  #                         ),
 
   #Check shinyjs and hidden ('shinyjs::hidden') as a way to initialize hidden UI
 
-  title = "MSDA Shiny",
+  title = "seQwin.",
   
   nav_panel("Data upload", dataupload_ui("upload")),
   nav_panel("Data processing", dataprocess_ui("process")),
   nav_panel("Plotting", plotting_ui("plotting")),
+  nav_panel("Network analysis", network_ui("network")),
+  nav_spacer(),
+  nav_item(input_dark_mode(id = "dark_mode", mode = "light")),
   
   padding = "3px",
 
@@ -105,12 +138,14 @@ ui <- page_navbar(
 server <- function(input, output, session) {
   
   # bs_themer()
+  
   upload_values <- dataupload_server("upload")
   
   dataprocess_values <- dataprocess_server("process", upload_values)
   # 
   # # Call the server function of the plotting module
   plotting_values <- plotting_server("plotting", dataprocess_values)
+  network_values <- network_server("network", plotting_values)
   
   # output$preprocessed_table <- renderDT(upload_values$preprocessed_data) # output in mod-dataupload
   

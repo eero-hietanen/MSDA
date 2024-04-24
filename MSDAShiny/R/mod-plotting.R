@@ -22,10 +22,10 @@ plotting_ui <- function(id) {
       "1fr"
     ),
     col_sizes = c(
-      "260px",
+      "320px",
       "1fr"
     ),
-    gap_size = "10px",
+    gap_size = "3px",
     # This side panel should probably be a sideBarPanel so that it's collapsible
     # To change the UI layout to a collapsible sidebar use layout_sidebar() and put the UI code starting from the
     # grid_card() element inside of it. Set grid_card() you want in the sidebar with sidebar = grid_card(...), and then
@@ -59,24 +59,14 @@ plotting_ui <- function(id) {
       area = "plotting_main_top",
       full_screen = TRUE,
       card_body(
-        accordion(
-          accordion_panel("Plot",
-            plotlyOutput(ns("plot_output")),
-            id = "plot_panel"
-          ), width = "50%"
-        ),
+        plotlyOutput(ns("plot_output")),
       )
     ),
     grid_card(
       area = "plotting_main_bottom",
       full_screen = TRUE,
       card_body(
-        accordion(
-          accordion_panel("Data",
-                          DTOutput(outputId = ns("plot_table"), width = "100%"),
-                          id = "data_panel"
-          )
-        )
+        DTOutput(outputId = ns("plot_table")),
       )
     )
   )
@@ -150,13 +140,14 @@ plotting_server <- function(id, data) {
       )
     })
     
-    # Works for downloading the whole plotdf. Edit so that selection is made for up- and down-regulated hits.
+    # Edit this so that the used data table is the UniProt table with nicer protein names etc.
     output$data_download <- downloadHandler(
       filename = function() {
         paste('significant_data-', Sys.Date(), '.csv', sep="")
       },
       content = function(file) {
-        write.csv(tables[[input$plot_select]], file, row.names = FALSE)
+        significant_data <- subset(tables[[input$plot_select]], diffexp != "NS")
+        write.csv(significant_data, file, row.names = FALSE)
       }
     )
     

@@ -10,7 +10,7 @@ data_preprocessing <- function(evidence, annotation) {
   
   req(list=c(evidence, annotation))
   # TODO: Fix the background color of the busy popup / spinner element
-  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#7d2ac9")
+  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
 
   evidence <- read_delim(evidence$datapath)
   annotation <- read_delim(annotation$datapath)
@@ -30,12 +30,25 @@ data_preprocessing <- function(evidence, annotation) {
 # Requires the output of data_preprocessing().
 # Returns a group comparison data frame.
 
-data_groupcomparisons <- function(input) {
+data_groupcomparisons <- function(input, ...) {
   
-  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#7d2ac9")
+  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
+  
+  args <- unlist(list(...))
+  
   # Check if the proteinSummarization option 'maxQuantilieforCensored' does anything with the NA data filtering
-  quant.msstats <- proteinSummarization(input, reference_norm = FALSE, use_log_file = FALSE)
-  test.pairwise <- groupComparisonTMT(quant.msstats, moderated = TRUE, use_log_file = FALSE)
+  quant.msstats <- proteinSummarization(input,
+                                        method = args[["summ_method"]],
+                                        global_norm = as.logical(args[["summ_peptide_norm"]]),
+                                        reference_norm =  as.logical(args[["summ_protein_norm"]]),
+                                        remove_norm_channel = as.logical(args[["summ_remove_norm"]]),
+                                        remove_empty_channel = as.logical(args[["summ_remove_empty"]]),
+                                        maxQuantileforCensored = as.numeric(args[["summ_maxquantilecensor"]]),
+                                        use_log_file = FALSE)
+  
+  test.pairwise <- groupComparisonTMT(quant.msstats,
+                                      moderated = as.logical(args[["group_modttest"]]),
+                                      use_log_file = FALSE)
   
   remove_modal_spinner()
   
@@ -65,7 +78,8 @@ plotting_volcano <- function(input, ...) {
   #set up base plot; note to log-transform p-value
   p <- ggplot(plotdf, aes(x=log2FC, y=-log10(adj.pvalue), col=factor(diffexp), text = plotdf$Protein)) + geom_point()
   #add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
-  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="red") + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="red") + xlab("log2FC") + ylab("adjusted p.value") + labs(color="")
+  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="#c91010") + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="#c91010")
+  p <- p + labs(x = "log2FC", y = "adjusted p.value", title = args[["plot_title"]], color = "")
   #adjust colour mapping
   # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
   
@@ -106,7 +120,7 @@ uniprot_fetch <- function(input, taxID, cols) { # add dataCols input, which is a
   # requires 'taxID' and 'dataCols' as inputs to determine which organism to fetch the data for
   # what which UniProt fields should be fetched for the final table.
   
-  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#7d2ac9")
+  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
   
   # cat("Fetching with: ", taxID) # Test message to R console
   
@@ -153,12 +167,33 @@ uniprot_fetch <- function(input, taxID, cols) { # add dataCols input, which is a
 # ----- UniProt species fetch -----#
 ####################################
 
-uniprot_fetch_species <- function(input, pattern) {
+uniprot_fetch_species <- function(input) {
   
   #FIXME: The search breaks slightly based on capitalization. E.g., searching Cricetulus finds the right taxa (ID: 10029), but searching cricetulus does not.
-  cat("called species fetch with pattern: ", pattern)
-  speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = pattern)
+  cat("called species fetch with pattern: ", input)
+  speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = input)
   
   speciesTable
+  
+}
+
+#######################################
+# ----- UniProt field validation -----#
+#######################################
+
+uniprot_validate_fields <- function(input) {
+  
+  fields <- UniProt.ws::returnFields()
+  cols <- unlist(strsplit(input, " "))
+  fields_ok <- TRUE
+  
+  for (col in cols) {
+    if (!(col %in% fields[["name"]])) {
+      fields_ok <- FALSE
+      break
+    }
+  }
+  
+  fields_ok
   
 }

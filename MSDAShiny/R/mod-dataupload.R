@@ -14,7 +14,7 @@ dataupload_ui <- function(id) {
       "1fr"
     ),
     col_sizes = c(
-      "260px",
+      "320px",
       "1fr"
     ),
     gap_size = "3px",
