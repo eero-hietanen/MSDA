@@ -21,10 +21,9 @@ network_ui <- function(id) {
 
   extendShinyjs(text = paste0('shinyjs.loadStringData = function(gene) {
         console.log("loadStringData called with gene:", gene);
-        var geneInput = Shiny.setInputValue(gene.id, gene)
         getSTRING("https://string-db.org", {
             "ncbiTaxonId":"9606",
-            "identifiers": geneInput,
+            "identifiers": gene,
             "network_flavor":"confidence"})
     }'), functions = "loadStringData")
     
@@ -73,7 +72,7 @@ network_server <- function(id, data) {
     rv <- data
     
     onclick("button", { 
-      
+      # FIXME: fix namespacing, call js$loadStringData with input$gene
     })
     
     # assigning a reactive value to an variable needs the RV to be evaluated with()

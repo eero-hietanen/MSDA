@@ -12,7 +12,6 @@
 #       query as a column to retrieve.
 # TODO: Fix busy spinner background.
 # TODO: Implement accordions to organize the side panel settings into logical groups
-# TODO: Adjust download button widths
 # TODO: Look into crosstalk library to link plots with DTs
 # TODO: Look into adding a STRING graph/plot of the results.
 #       Libraries: STRINGdb, igraph, networkD3

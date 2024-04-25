@@ -80,65 +80,122 @@ plotting_server <- function(id, data) {
     
     rv$groupcomp_data <- reactive({data$groupcomp_data})
     rv$uniprot_data <- reactive({data$uniprot_data})
+    rv$fccutoff <- reactive(input$plot_fccutoff)
+    rv$pcutoff <- reactive(input$plot_pcutoff)
     counter <- reactiveVal(0)
     
     plots <- reactiveValues()
     tables <- reactiveValues()
+    
+    sharedDT <- SharedData$new(reactive(rv$prepped_data))
+
+    # Call prep_data() to prep the data table by inserting NS col. and calculating significan hits based on fc and p cutoffs. Returns rv$prepped_data.
+    # Generate a shared data object (currently reactive based on rv$prepped_data).
+    # Call generate_plot and return a plot (don't actually need the plotdf from the plot func. anymore; can delete it).
+    # DT render with the shared data object to enable Crosstalk functionality.
+    # FIXME: There's an error (arg is of length 0) upon initialization because the DT render is trying to access the SDO which isn't generated yet(?)
+    # TODO: This should eventually work on the UniProt table instead of the groupcomp table.
+    # TODO: Fix multiple plot generation and Crosstalk links. Currently, generating multiple plots works, but the Crosstalk connection is only with plot1 and table1. The table output also doesn't update when changing plots selection.
+    observe({
+      prep_data(rv$groupcomp_data()) # change to work with uniprot data
+      generate_plot()
+      shinyjs::show("data_download")
+    }) %>% bindEvent(input$make_plot)
+    
+    prep_data <- function(input) {
+      
+      prepped_data <- input
+      
+      fccutoff <- rv$fccutoff()
+      pcutoff <- rv$pcutoff()
+
+      #add a categorical column for up/down regulated genes; default value "NS"
+      prepped_data$diffexp <- "NS"
+      # Changed the log2FC vals from 0.5 to 0.6, also for xintercept below (geom_vline()); change back if wrong; check standard log2FC cutoff
+      prepped_data$diffexp[prepped_data$log2FC > fccutoff & prepped_data$adj.pvalue < pcutoff] <- "Up-regulated"
+      # as.numeric is done for the negative value because otherwise the plotting function breaks 
+      prepped_data$diffexp[prepped_data$log2FC < -as.numeric(fccutoff) & prepped_data$adj.pvalue < pcutoff] <- "Down-regulated"
+      
+      rv$prepped_data <- prepped_data
+    }
+    
+    # --- CROSSTALK TEST -->
 
     generate_plot <- function() {
-      additional_args <- list(plot_title = input$plot_title,
-                              plot_pcutoff = input$plot_pcutoff,
-                              plot_fccutoff = input$plot_fccutoff)
-      counter(counter() +1) # Note how reactiveVal() is being updated compared to reactiveValues() element
+      
       # When additional args are passed in this way, the varargs have to be unlisted in the plotting_volcano()
       # after which the varargs can be accessed by, e.g., args[["plot_title"]].
       # Another option is to use do.call(plotting_volcano, c(list(rv$groupcomp_data, additional_args))) which would
       # allow retrieving the varargs through just args <- list(...) in the utils func and then accessing the varargs with, e.g., args$plot_title.
-      plot_data <- plotting_volcano(rv$groupcomp_data(), additional_args)
+      additional_args <- list(plot_title = input$plot_title,
+                              plot_pcutoff = input$plot_pcutoff,
+                              plot_fccutoff = input$plot_fccutoff)
+
+      counter(counter() +1) # Note how reactiveVal() is being updated compared to reactiveValues() element
+      
+      plot_data <- plotting_volcano_test(sharedDT, additional_args) # test plotting function used with Crosstalk
       plot_name <- paste("Plot", counter())
       plots[[plot_name]] <- plot_data[["p"]]
       tables[[plot_name]] <- plot_data[["plotdf"]]
       # Note the selection of the last element on the choices list by tail()
       updateSelectInput(session, "plot_select", choices = names(plots), selected = tail(names(plots), 1))
     }
-    
-    observe({
-      generate_plot()
-      shinyjs::show("data_download")
-    }) %>% bindEvent(input$make_plot)
-    
+
+    # Crosstalk plot_table output
+    output$plot_table <- renderDT({sharedDT}, server=FALSE)
+
+    # <-- CROSSTALK TEST ---
+     
+    # generate_plot <- function() {
+    #   additional_args <- list(plot_title = input$plot_title,
+    #                           plot_pcutoff = input$plot_pcutoff,
+    #                           plot_fccutoff = input$plot_fccutoff)
+    #   counter(counter() +1) # Note how reactiveVal() is being updated compared to reactiveValues() element
+    #   # When additional args are passed in this way, the varargs have to be unlisted in the plotting_volcano()
+    #   # after which the varargs can be accessed by, e.g., args[["plot_title"]].
+    #   # Another option is to use do.call(plotting_volcano, c(list(rv$groupcomp_data, additional_args))) which would
+    #   # allow retrieving the varargs through just args <- list(...) in the utils func and then accessing the varargs with, e.g., args$plot_title.
+    #   plot_data <- plotting_volcano(rv$groupcomp_data(), additional_args)
+    #   plot_name <- paste("Plot", counter())
+    #   plots[[plot_name]] <- plot_data[["p"]]
+    #   tables[[plot_name]] <- plot_data[["plotdf"]]
+    #   # Note the selection of the last element on the choices list by tail()
+    #   updateSelectInput(session, "plot_select", choices = names(plots), selected = tail(names(plots), 1))
+    # }
+
     output$plot_output <- renderPlotly({
       req(!is.null(plots))
       req(!is.null(input$plot_select) && input$plot_select != "")
-    
+
       plot_plot <- plots[[input$plot_select]]
       plot_plot
     })
-    
-    output$plot_table <- renderDT({
-      req(!is.null(plots))
-      req(!is.null(input$plot_select) && input$plot_select != "")
-      
-      plot_table <- tables[[input$plot_select]]
-      datatable(
-        plot_table,
-        rownames = FALSE,
-        options = list(
-          scrollX = TRUE,
-          searching = TRUE,
-          pageLength = 25,
-          columnDefs = list(list(
-            targets = "_all",
-            render = JS(
-              "function(data, type, row, meta) {",
-              "return type === 'display' && data != null && data.length > 30 ?",
-              "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
-              "}"
-            )
-          ))
-        )
-      )
-    })
+
+    #   output$plot_table <- renderDT({
+    #   req(!is.null(plots))
+    #   req(!is.null(input$plot_select) && input$plot_select != "")
+    # 
+    #   plot_table <- tables[[input$plot_select]]
+    #   datatable(
+    #     plot_table,
+    #     rownames = FALSE,
+    #     options = list(
+    #       scrollX = TRUE,
+    #       searching = TRUE,
+    #       pageLength = 25,
+    #       columnDefs = list(list(
+    #         targets = "_all",
+    #         render = JS(
+    #           "function(data, type, row, meta) {",
+    #           "return type === 'display' && data != null && data.length > 30 ?",
+    #           "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
+    #           "}"
+    #         )
+    #       ))
+    #     )
+    #   )
+    # })
+
     
     # Edit this so that the used data table is the UniProt table with nicer protein names etc.
     output$data_download <- downloadHandler(
@@ -150,23 +207,6 @@ plotting_server <- function(id, data) {
         write.csv(significant_data, file, row.names = FALSE)
       }
     )
-    
-    # # --- CROSSTALK TEST -->
-    # 
-    # sharedDT <- SharedData$new(reactive(rv$groupcomp_data()))
-    # 
-    # # plot output has issues which have to do with the bindEvent; just use observe?
-    # generate_plot <- function() {
-    #   rv$counter <- rv$counter + 1
-    #   plot <- plotting_volcano(sharedDT) # This should likely be changed once more data plotting options are established
-    #   plot_name <- paste("Plot", rv$counter)
-    #   plots[[plot_name]] <- plot
-    #   updateSelectInput(session, "plot_select", choices = names(plots))
-    # }
-    # 
-    # output$plot_table <- renderDT({sharedDT}, server=FALSE) # DT from sharedDT is generated correctly
-    # 
-    # # <-- CROSSTALK TEST ---
     
     rv
     

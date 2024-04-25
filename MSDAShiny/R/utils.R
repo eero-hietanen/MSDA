@@ -92,6 +92,29 @@ plotting_volcano <- function(input, ...) {
   # p
 }
 
+## Testing function for plotting while Crosstalk is enabled ##
+
+plotting_volcano_test <- function(input, ...) {
+  
+  args <- unlist(list(...))
+  
+  #set up base plot; note to log-transform p-value
+  p <- ggplot(input, aes(x=log2FC, y=-log10(adj.pvalue), col=factor(diffexp), text = input$Protein)) + geom_point()
+  #add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
+  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="#c91010") + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="#c91010")
+  p <- p + labs(x = "log2FC", y = "adjusted p.value", title = args[["plot_title"]], color = "")
+  #adjust colour mapping
+  # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
+  
+  #names for DE genes can be toggled by adding another column to the 'plotdf' and
+  #copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
+  #check 'ggrepel' library and the geom_text_repel() function for label placement
+  
+  # Return a list with the plot p and the plotdf. Use plotdf as the data table and enable download signif. proteins through it.
+  return(list(p = p, plotdf = input)) # Can just return p here
+  # p
+}
+
 # ##############################################
 # # ----- Volcano plot (EnhancedVolcano) ----- #
 # ##############################################
