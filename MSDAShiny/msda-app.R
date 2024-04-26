@@ -40,8 +40,6 @@ library(colourpicker)
 library(bsicons)
 library(STRINGdb)
 library(igraph)
-# library(V8)
-library(golem)
 
 options(shiny.maxRequestSize = 40 * 1024^2)
 # options(shiny.error = NULL)
