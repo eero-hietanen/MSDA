@@ -100,9 +100,10 @@ plotting_volcano_test <- function(input, ...) {
   
   #set up base plot; note to log-transform p-value
   p <- ggplot(input, aes(x=log2FC, y=-log10(adj.pvalue), col=factor(diffexp), text = input$Protein)) + geom_point()
+  #add plot labels
+  p <- p + labs(x = "log2FC", y = "adj. p-value", title = args[["plot_title"]], color = "")
   #add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
-  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="#c91010") + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="#c91010")
-  p <- p + labs(x = "log2FC", y = "adjusted p.value", title = args[["plot_title"]], color = "")
+  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="#960000", linetype = "dash", linewidth = 0.3) + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="#960000", linetype = "dash", linewidth = 0.3)
   #adjust colour mapping
   # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
   
@@ -136,7 +137,7 @@ plotting_volcano_test <- function(input, ...) {
 # from the original R script. This table should also act as a basis for the plotting functions
 # as it has more available data, such as gene names that can act as better labels for DE genes.
 
-uniprot_fetch <- function(input, taxID, cols) { # add dataCols input, which is a list of UniProt fields
+uniprot_fetch <- function(input, taxID, fields) {
   
   # function to fetch UniProt data and construct a final results table similar to what's
   # in the original script file.
@@ -147,42 +148,43 @@ uniprot_fetch <- function(input, taxID, cols) { # add dataCols input, which is a
   
   # cat("Fetching with: ", taxID) # Test message to R console
   
-  comparisonResult <- filter(input, !is.na(input$SE))
+  # filter out the rows with found issues from group comparisons
+  comparison_result <- filter(input, is.na(input$issue))
 
-  accessionList <- unique(as.vector(str_extract_all(comparisonResult$Protein,
+  accession_list <- unique(as.vector(str_extract_all(comparison_result$Protein,
                                                     "[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}",
                                                     simplify = TRUE)))
 
-  # Build UniProt.ws object with hamster database, query Uniprot and fetch
+  # Build UniProt.ws object with species database, query Uniprot and fetch
   # GO terms and protein descriptions for each accession. Full list of UniProtKB
   # return fields listed at https://www.uniprot.org/help/return_fields.
   # Chinese hamster taxon ID = 10029, obtained with 'availableUniprotSpecies(pattern="greseus")
 
   taxDB <- UniProt.ws(taxID)
-  # Split cols character string by whitespace and unlist the result to retrieve a vector
-  uniprotResult <- UniProt.ws::select(x = taxDB, keys=accessionList, columns=unlist(strsplit(cols, " ")))
+  # Split fields character string by whitespace and unlist the result to retrieve a vector
+  uniprot_result <- UniProt.ws::select(x = taxDB, keys=accession_list, columns=unlist(strsplit(fields, " ")))
 
   # Merge UniProt results with existing comparison results.
 
-  mergedResult <- NULL
+  merged_result <- NULL
 
-  for(row in 1:nrow(uniprotResult)) {
+  for(row in 1:nrow(uniprot_result)) {
 
-    output <- cbind(comparisonResult[grepl(uniprotResult[row,1], comparisonResult$Protein)], uniprotResult[row,])
+    output <- cbind(comparison_result[grepl(uniprot_result[row,1], comparison_result$Protein)], uniprot_result[row,])
 
-    mergedResult <- rbind(mergedResult, output, fill = TRUE)
+    merged_result <- rbind(merged_result, output, fill = TRUE)
   }
 
   # Rename 'Protein' column based on 'Entry' column and remove the redundant
   # 'Entry', 'From', and 'Issue' columns.
-  # Done with dplyr if_else() as the base package ifelse had a renameing issue.
+  # Done with dplyr if_else() as the base package ifelse had a renaming issue.
 
-  mergedResult$Protein <- if_else(is.na(mergedResult$Entry), mergedResult$Protein, mergedResult$Entry, mergedResult$Protein)
-  mergedResult <- subset(mergedResult, select = -c(From,Entry, issue))
+  merged_result$Protein <- if_else(is.na(merged_result$Entry), merged_result$Protein, merged_result$Entry, merged_result$Protein)
+  merged_result <- subset(merged_result, select = -c(From,Entry, issue))
   
   remove_modal_spinner()
   
-  mergedResult
+  merged_result
 
 }
 
@@ -192,8 +194,6 @@ uniprot_fetch <- function(input, taxID, cols) { # add dataCols input, which is a
 
 uniprot_fetch_species <- function(input) {
   
-  #FIXME: The search breaks slightly based on capitalization. E.g., searching Cricetulus finds the right taxa (ID: 10029), but searching cricetulus does not.
-  cat("called species fetch with pattern: ", input)
   speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = input)
   
   speciesTable

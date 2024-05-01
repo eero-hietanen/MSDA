@@ -70,12 +70,20 @@ ui <- page_navbar(
            ")
     ),
     tags$script(src="https://string-db.org/javascript/combined_embedded_network_v2.0.4.js"),
+    tags$script(HTML("Shiny.addCustomMessageHandler('handler1', function(gene) {
+      console.log('customMessageHandler loaded with', gene);
+      getSTRING('https://string-db.org', {
+        'species': '9606',
+        'identifiers': ['TP53'],
+        'network_flavor':'confidence'
+      });
+});")),
+    
   ),
   
   # update params. for bs_theme_update were obtained through bs_themer().
   # also pipes to bs_add_rules() using |>, which is then used to update the CSS for, e.g., data tables
   # For fonts/icons etc., check https://fonts.google.com
-  # FIXME: Fix the background colour in the theme when elements are expanded (fullscreen)
   theme = bs_theme_update(bs_theme(preset = "bootstrap"),
                           base_font = font_google("Roboto"),
                           font_scale = 0.9,
@@ -85,6 +93,7 @@ ui <- page_navbar(
                             ),
   
   # vapor theme modifications
+  # FIXME: Fix the background colour in the theme when elements are expanded (fullscreen)
   # something broke with the datatable row selection colour
   # theme = bs_theme_update(bs_theme(bootswatch = "vapor"),
   #                         base_font = font_google("Roboto"),

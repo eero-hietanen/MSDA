@@ -44,13 +44,16 @@ plotting_ui <- function(id) {
       accordion(
         accordion_panel("Plot options",
                         textInput(ns("plot_title"), label = "Title"),
-                        numericInput(ns("plot_pcutoff"), label = "p-value cutoff", value = 0.05, step = 0.01),
-                        numericInput(ns("plot_fccutoff"), label = "FC cutoff", value = 0.6, step = 0.1),
+                        # Use numericInput here instead of sliderInput as the p-val cutoff might have to be lowered substantially
+                        # numericInput(ns("plot_pcutoff"), label = "p-value cutoff", value = 0.05, step = 0.01),
+                        # numericInput(ns("plot_fccutoff"), label = "FC cutoff", value = 0.6, step = 0.1),
+                        sliderInput(ns("plot_pcutoff"), label = "p-value cutoff", min = 0, max = 1, value = 0.05),
+                        sliderInput(ns("plot_fccutoff"), label = "FC cutoff", min = 0, max = 3, value = 1.1, step = 0.1),
         ),
       ),
       tags$hr(),
-      actionButton(ns("make_plot"),
-                   "Volcano plot",
+      actionButton(ns("update_plot"),
+                   "Update plot",
                    width = "100%"
                    ),
       shinyjs::hidden(downloadButton(ns("data_download"), "Download table")),
@@ -98,11 +101,27 @@ plotting_server <- function(id, data) {
     # DT render with the shared data object to enable Crosstalk functionality.
     # TODO: This should eventually work on the UniProt table instead of the groupcomp table.
     # TODO: Fix the plot highlight updating, i.e. when you first generate a plot, select a node, deselect it, then all of the plot points do not revert back to as being "selected", but remain semi-transparent.
+    # observe({
+    #   prep_data(rv$groupcomp_data()) # change to work with uniprot data
+    #   generate_plot()
+    #   shinyjs::show("data_download")
+    # }) %>% bindEvent(input$update_plot)
+    
     observe({
-      prep_data(rv$groupcomp_data()) # change to work with uniprot data
+      req(!is.null(rv$groupcomp_data()))
       generate_plot()
       shinyjs::show("data_download")
-    }) %>% bindEvent(input$make_plot)
+    }) %>% bindEvent(input$update_plot)
+    
+    observe({
+      req(!is.null(rv$groupcomp_data()))
+      generate_plot()
+    }) %>% bindEvent(input$plot_fccutoff)
+    
+    observe({
+      req(!is.null(rv$groupcomp_data()))
+      generate_plot()
+    }) %>% bindEvent(input$plot_pcutoff)
     
     # FIXME: The problem with the table updating with Crosstalk might be due to the way rv$prepped_data is used
     # If the shared data object refers back to prepped_data, then that'll always be the latest one
@@ -129,8 +148,11 @@ plotting_server <- function(id, data) {
     # TODO: Consider removing the functionality of storing multiple plots and making them browsable through inputSelect.
     #       Instead, make the adjustments to FC and p-val cutoffs dynamic so they update in real time without generating a new plot
     #       and just have the single plot/table representation for the data.
+    # FIXME: Changed to a single "real-time" output for the plot and table. However, it's somewhat fucked.
+    #        Check the slider input and how the values are read / interpreted for the plot as they seem to bounce around.
     generate_plot <- function() {
       
+      prep_data(rv$groupcomp_data())
       # When additional args are passed in this way, the varargs have to be unlisted in the plotting_volcano()
       # after which the varargs can be accessed by, e.g., args[["plot_title"]].
       # Another option is to use do.call(plotting_volcano, c(list(rv$groupcomp_data, additional_args))) which would
@@ -139,20 +161,23 @@ plotting_server <- function(id, data) {
                               plot_pcutoff = input$plot_pcutoff,
                               plot_fccutoff = input$plot_fccutoff)
 
-      counter(counter() +1) # Note how reactiveVal() is being updated compared to reactiveValues() element
-      plot_name <- paste0("Plot", counter())
+      # counter(counter() +1) # Note how reactiveVal() is being updated compared to reactiveValues() element
+      # plot_name <- paste0("Plot", counter())
       
       # 'group' is the parameter that acts as an identifier between the linked object groups, not 'key'
       # FIXME: A problem persists where the DT render output doesn't update to the correct data table (evident by 'diffexp' column values)
-      sharedDT <- SharedData$new(reactive(rv$prepped_data), group = plot_name)
+      shared_data <- SharedData$new(reactive(rv$prepped_data))
       
-      plot_data <- plotting_volcano_test(sharedDT, additional_args) # test plotting function used with Crosstalk
+      plot_data <- plotting_volcano_test(shared_data, additional_args) # test plotting function used with Crosstalk
       
-      plots[[plot_name]] <- plot_data[["p"]]
-      # tables[[plot_name]] <- plot_data[["plotdf"]]
-      tables[[plot_name]] <- sharedDT
-      # Note the selection of the last element on the choices list by tail()
-      updateSelectInput(session, "plot_select", choices = names(plots), selected = tail(names(plots), 1))
+      rv$p <- plot_data[["p"]]
+      rv$t <- shared_data
+      
+      # plots[[plot_name]] <- plot_data[["p"]]
+      # # tables[[plot_name]] <- plot_data[["plotdf"]]
+      # tables[[plot_name]] <- sharedDT
+      # # Note the selection of the last element on the choices list by tail()
+      # updateSelectInput(session, "plot_select", choices = names(plots), selected = tail(names(plots), 1))
     }
 
     # Crosstalk plot_table output
@@ -163,10 +188,11 @@ plotting_server <- function(id, data) {
     # What's needed is a new SDO for each plot <-> table combination. Check Crosstalk functions for retrieving and cloning(?) the data.
     # Solution is likely related to assigning a key to each SDO when it's being linked to a plot (clone and assing key?)
     output$plot_table <- renderDT({
-      req(!is.null(plots))
-      req(!is.null(input$plot_select) && input$plot_select != "")
+      # req(!is.null(plots))
+      # req(!is.null(input$plot_select) && input$plot_select != "")
+      req(!is.null(rv$t))
       
-      plot_table <- tables[[input$plot_select]]
+      plot_table <- rv$t
       datatable(
         plot_table,
         rownames = FALSE,
@@ -186,7 +212,7 @@ plotting_server <- function(id, data) {
         )
       )
       
-      }, server=FALSE)
+      }, server = FALSE) # app struggles with large tables with client-side processing, but is required for Crosstalk to work
 
     # <-- CROSSTALK TEST ---
      
@@ -208,11 +234,11 @@ plotting_server <- function(id, data) {
     # }
 
     output$plot_output <- renderPlotly({
-      req(!is.null(plots))
-      req(!is.null(input$plot_select) && input$plot_select != "")
+      # req(!is.null(plots))
+      # req(!is.null(input$plot_select) && input$plot_select != "")
+      req(!is.null(rv$p))
 
-      plot_plot <- plots[[input$plot_select]]
-      plot_plot
+      rv$p
     })
 
     #   output$plot_table <- renderDT({
@@ -239,7 +265,6 @@ plotting_server <- function(id, data) {
     #     )
     #   )
     # })
-
     
     # Edit this so that the used data table is the UniProt table with nicer protein names etc.
     # Data download doesn't work with Crosstalk shared data objects. Current error is about not finding 'diffexp' column.
