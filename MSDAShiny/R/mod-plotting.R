@@ -40,15 +40,32 @@ plotting_ui <- function(id) {
       area = "plotting_side",
       card_header = "Settings",
       card_body(
-        selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
+      accordion(
+        # selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
+        accordion_panel("Help",
+        tags$div(HTML("<h5>Volcano plot</h5>
+                      <p>Generate a volcano plot of based on the output from the data processing module. 
+                      The plot is linked to the data table through Crosstalk.</p>
+                      <p>Basic plot tool buttons are found on the top right of the plot.
+                      Both the plot and the data table can be expanded to full screen from the bottom right.</p>
+                      <p>Basic functionality includes:
+                      <ul>
+                      <li>Zoom with mouse scroll</li>
+                      <li>Box/lasso select points on the plot</li>
+                      <li>Double click on the plot to de-select</li>
+                      <li>Select data table rows to highlight plot data</li>
+                      </ul></p>
+                      ")),
+        )
+      ),
       accordion(
         accordion_panel("Plot options",
                         textInput(ns("plot_title"), label = "Title"),
                         # Use numericInput here instead of sliderInput as the p-val cutoff might have to be lowered substantially
-                        # numericInput(ns("plot_pcutoff"), label = "p-value cutoff", value = 0.05, step = 0.01),
-                        # numericInput(ns("plot_fccutoff"), label = "FC cutoff", value = 0.6, step = 0.1),
-                        sliderInput(ns("plot_pcutoff"), label = "p-value cutoff", min = 0, max = 1, value = 0.05),
-                        sliderInput(ns("plot_fccutoff"), label = "FC cutoff", min = 0, max = 3, value = 1.1, step = 0.1),
+                        numericInput(ns("plot_pcutoff"), label = "p-value cutoff", value = 0.05, step = 0.01),
+                        numericInput(ns("plot_fccutoff"), label = "FC cutoff", value = 1.1, step = 0.1),
+                        # sliderInput(ns("plot_pcutoff"), label = "p-value cutoff", min = 0, max = 1, value = 0.05),
+                        # sliderInput(ns("plot_fccutoff"), label = "FC cutoff", min = 0, max = 3, value = 1.1, step = 0.1),
         ),
       ),
       tags$hr(),
@@ -238,7 +255,7 @@ plotting_server <- function(id, data) {
       # req(!is.null(input$plot_select) && input$plot_select != "")
       req(!is.null(rv$p))
 
-      rv$p
+      ggplotly(rv$p) %>% highlight(on = 'plotly_selected', off = 'plotly_deselect') %>% config(scrollZoom = TRUE, modeBarButtonsToRemove = c('zoomIn', 'zoomOut', 'hoverCompareCartesian', 'hoverClosestCartesian')) %>% style(unselected=list(marker=list(opacity=1)))
     })
 
     #   output$plot_table <- renderDT({

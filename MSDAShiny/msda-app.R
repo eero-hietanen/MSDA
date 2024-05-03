@@ -15,6 +15,12 @@
 # TODO: Look into crosstalk library to link plots with DTs
 # TODO: Look into adding a STRING graph/plot of the results.
 #       Libraries: STRINGdb, igraph, networkD3
+# TODO: Modify UniProt table to have: UniProt ID, species by default (others?)¨
+# TODO: Look into 'httr2' package for R (similar to 'Requests' in Python) for handling HTTP communication.
+#       Could you just query STRINGdb API with httr2 and build the network 'manually' using an external network graphing library?
+#       Also, if using the embedded network is easier, could you still query with httr2 to get/receive clustering information for the submitted gene list?
+#       If you want to do any selection from the network graph, you'd likely need to plot it with some other library.
+# TODO: Check if the currently used MSstats functions can be changed to the more base level ones (access with MSstats:::), so hopefully log file generation can be turned off properly.
 
 library(shiny)
 library(shinyjs)
@@ -70,12 +76,17 @@ ui <- page_navbar(
            ")
     ),
     tags$script(src="https://string-db.org/javascript/combined_embedded_network_v2.0.4.js"),
-    tags$script(HTML("Shiny.addCustomMessageHandler('handler1', function(gene) {
-      console.log('customMessageHandler loaded with', gene);
+    tags$script(HTML("Shiny.addCustomMessageHandler('string_network_fetch', function(options) {
+      console.log('customMessageHandler loaded with', options.gene_list);
+      var genes = options.gene_list.split(' ');
       getSTRING('https://string-db.org', {
-        'species': '9606',
-        'identifiers': ['TP53'],
-        'network_flavor':'confidence'
+        'species': options.species_id,
+        'identifiers': genes,
+        'network_flavor':'confidence',
+        'network_type': options.network_type,
+        'add_color_nodes': options.node_count,
+        'required_score': options.interaction_significance,
+        'show_query_node_labels': options.query_labels,
       });
 });")),
     
