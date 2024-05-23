@@ -7,6 +7,8 @@
 #       Link plot and DT so that selection <-> plot highlight work. Implement download of up/down reg. proteins.
 # TODO: The plotting options for pval and FC cutoff need clarification regarding what the number is (e.g. some log of |2FC|?)
 # TODO: Organize the plotting module code so that it has a clear division for crosstalk / non-crosstalk code for ease of testing.
+# TODO: Add buttons/boxes to select all up-/down-regulated genes. Or both.
+# FIXME: FC-cutoff and updating it is buggy on the plot; requires two clicks of the "Update plot" button to update
 
 plotting_ui <- function(id) {
   
@@ -108,6 +110,12 @@ plotting_server <- function(id, data) {
     plots <- reactiveValues()
     tables <- reactiveValues()
     
+    observe({
+      nav_select(id = "main_tabs", selected = "network")
+      cat("clicked\n")
+      # nav_select(id = "main_tabs", selected = "network")
+    }) %>% bindEvent(input$tab_switch)
+    
     # Each generated plot will need its own SDO (assign keys) and be linked to their respective plot.
     # Check if storing SDOs in th rvs is suitable and consider moving SDO generation inside the plot generation/data prep functions.
     # sharedDT <- SharedData$new(reactive(rv$prepped_data))
@@ -124,21 +132,22 @@ plotting_server <- function(id, data) {
     #   shinyjs::show("data_download")
     # }) %>% bindEvent(input$update_plot)
     
+    # FIXME: For FC-cutoff to update correctly it requires two clicks of the update plot button.
     observe({
       req(!is.null(rv$groupcomp_data()))
       generate_plot()
       shinyjs::show("data_download")
     }) %>% bindEvent(input$update_plot)
     
-    observe({
-      req(!is.null(rv$groupcomp_data()))
-      generate_plot()
-    }) %>% bindEvent(input$plot_fccutoff)
-    
-    observe({
-      req(!is.null(rv$groupcomp_data()))
-      generate_plot()
-    }) %>% bindEvent(input$plot_pcutoff)
+    # observe({
+    #   req(!is.null(rv$groupcomp_data()))
+    #   generate_plot()
+    # }) %>% bindEvent(input$plot_fccutoff)
+    # 
+    # observe({
+    #   req(!is.null(rv$groupcomp_data()))
+    #   generate_plot()
+    # }) %>% bindEvent(input$plot_pcutoff)
     
     # FIXME: The problem with the table updating with Crosstalk might be due to the way rv$prepped_data is used
     # If the shared data object refers back to prepped_data, then that'll always be the latest one
@@ -189,7 +198,7 @@ plotting_server <- function(id, data) {
       
       rv$p <- plot_data[["p"]]
       rv$t <- shared_data
-      
+    
       # plots[[plot_name]] <- plot_data[["p"]]
       # # tables[[plot_name]] <- plot_data[["plotdf"]]
       # tables[[plot_name]] <- sharedDT
@@ -283,15 +292,14 @@ plotting_server <- function(id, data) {
     #   )
     # })
     
-    # Edit this so that the used data table is the UniProt table with nicer protein names etc.
-    # Data download doesn't work with Crosstalk shared data objects. Current error is about not finding 'diffexp' column.
-    # Solution is likely to use SharedData$getData() first to fetch the data, and then download it.
     output$data_download <- downloadHandler(
       filename = function() {
-        paste('significant_data-', Sys.Date(), '.csv', sep="")
+        paste('significant_hits_data-', Sys.Date(), '.csv', sep="")
       },
       content = function(file) {
-        significant_data <- subset(tables[[input$plot_select]], diffexp != "NS")
+        table <- rv$t
+        # This could use a drop of the 'issue' column, or just move to using UniProt table.
+        significant_data <- subset(table$origData(), diffexp != "NS")
         write.csv(significant_data, file, row.names = FALSE)
       }
     )

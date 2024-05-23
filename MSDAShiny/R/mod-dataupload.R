@@ -23,7 +23,7 @@ dataupload_ui <- function(id) {
       card_header("Settings"),
       card_body(
         radioButtons(
-          inputId = ns("sourcetype"),
+          inputId = ns("source_type"),
           label = "Analysis program",
           choices = c("FragPipe", "MaxQuant", "ProteomeDiscoverer"),
           width = "100%",
@@ -77,7 +77,7 @@ dataupload_server <- function(id) {
     rv <- reactiveValues(preprocessed_data = NULL)
     
     output$otheroptions <- renderUI({
-      if(reactive(input$sourcetype)() == "MaxQuant") { # Previous comparison error here was caused by 1) attempting to call without reactive(), and 2) calling the reactive object instead of the VALUE held in the reactive by using () at the end
+      if(reactive(input$source_type)() == "MaxQuant") { # Previous comparison error here was caused by 1) attempting to call without reactive(), and 2) calling the reactive object instead of the VALUE held in the reactive by using () at the end
         fileInput(
           inputId = session$ns("proteingroups"),  # note session$ns$("id")
           label = "Protein groups",
@@ -89,7 +89,7 @@ dataupload_server <- function(id) {
     # Modify the data_preprocessing func in utils.R.
     # Also need to pass input$proteingroups if MQ is selected. Look into adding '...' to funcs to pass arguments. Look into 'do.call' and passing the arguments as a list. If the list is named based on the input$[name], then should be able to parse based on that in the utils function.
     observe({
-      rv$preprocessed_data <- data_preprocessing(input$evidence, input$annotation)
+      rv$preprocessed_data <- data_preprocessing(input$evidence, input$annotation, input$source_type)
       shinyjs::show("data_download")
     }) %>% bindEvent(input$preprocess)
 

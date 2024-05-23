@@ -44,7 +44,7 @@ dataprocess_ui <- function(id) {
     grid_card(
       area = "dataprocessing_side",
       full_screen = TRUE,
-      card_header("Options"),
+      card_header("Settings"),
       card_body(
         accordion(
           accordion_panel(

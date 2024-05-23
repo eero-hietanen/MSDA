@@ -6,20 +6,24 @@
 # Returns the processed data from PhilosophertoMSstatsTMTFormat.
 # TODO: Add QC plots through dataProcessPlots()?
 
-data_preprocessing <- function(evidence, annotation) {
+# TODO: Fix this to handle MaxQuant input. Requires additional protein_groups input file.
+data_preprocessing <- function(evidence, annotation, source_type) {
   
-  req(list=c(evidence, annotation))
-  # TODO: Fix the background color of the busy popup / spinner element
+  req(list=c(evidence, annotation, source_type))
   show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
 
-  evidence <- read_delim(evidence$datapath)
-  annotation <- read_delim(annotation$datapath)
-  dataOut <- PhilosophertoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
+  evidence <- vroom(evidence$datapath)
+  annotation <- vroom(annotation$datapath)
+
+  if (source_type == "FragPipe") {
+    dataOut <- PhilosophertoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
+  } else if(source_type == "ProteomeDiscoverer") {
+    dataOut <- PDtoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
+  }
   
   remove_modal_spinner()
   
   dataOut
-  
 }
 
 #########################################
@@ -185,7 +189,6 @@ uniprot_fetch <- function(input, taxID, fields) {
   remove_modal_spinner()
   
   merged_result
-
 }
 
 ####################################
@@ -197,7 +200,6 @@ uniprot_fetch_species <- function(input) {
   speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = input)
   
   speciesTable
-  
 }
 
 #######################################
@@ -218,5 +220,26 @@ uniprot_validate_fields <- function(input) {
   }
   
   fields_ok
+}
+
+######################################################
+# ----- STRINGdb API calls: Enrichment analysis -----#
+# This can be modified to handle different api calls.#
+# Pass a variable that is used to handle which API   #
+# call is performed.                                 #
+######################################################
+
+string_api_call <- function(input) {
   
+  # Concatenates the identifiers. Carriage return, \r, is used as a delimiter for the func. enrichment API call.
+  string_conv <- function(input) {
+    paste0(input, collapse='\r')
+  }
+  
+  req <- request("https://string-db.org/api")
+  resp <- req |> req_url_path_append("tsv/enrichment") |> req_url_query(identifiers=string_conv(input)) |> req_perform()
+  resp_body_tsv <- resp |> resp_body_string()
+  resp_body_tsv_parsed <- vroom(I(resp_body_tsv), delim="\t")
+  
+  resp_body_tsv_parsed
 }
