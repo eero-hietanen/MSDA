@@ -163,30 +163,11 @@ dataprocess_ui <- function(id) {
       )
     )
   )
-
-  
-  # tagList(
-  #   sidebarPanel(
-  #     actionButton(ns("groupcomparisons"), "Perform group comparisons", style="margin-bottom: 5px;"),
-  #     shinyjs::hidden(textInput(ns("taxID"), "UniProt taxa ID or species name (can be partial)")),
-  #     shinyjs::hidden(actionButton(ns("uniprottable"), "Fetch UniProt data or species taxa ID list", style="margin-bottom: 5px;")),
-  #   ),
-  #   mainPanel(
-  #     DTOutput(ns("groupcomp_table")),
-  #     DTOutput(ns("uniprot_table")),
-  #     DTOutput(ns("uniprot_species")),
-  #   ),
-  # 
-  # )
 }
 
-# dataprocess_server needs myData from dataupload_server to further process the data
-
-dataprocess_server <- function(id, dataupload_data) {
+dataprocess_server <- function(id, data) {
 
   moduleServer(id, function(input, output, session) {
-    
-    rv <- reactiveValues(groupcomp_data = NULL, uniprot_data = NULL, uniprot_species = NULL)
     
     observe({
 
@@ -198,86 +179,27 @@ dataprocess_server <- function(id, dataupload_data) {
                               summ_maxquantilecensor = input$summ_maxquantilecensor,
                               group_modttest = input$group_modttest)
 
-      rv$groupcomp_data <- data_groupcomparisons(dataupload_data$preprocessed_data, additional_args)
+      data$groupcomp_data <- data_groupcomparisons(data$preprocessed_data, additional_args)
       shinyjs::show("data_download")
     }) %>% bindEvent(input$groupcomparisons)
     
-    # perform_group_comparison <- function() {
-    #   
-    #   additional_args <- list(summ_method = input$summ_method,
-    #                           summ_peptide_norm = input$summ_peptide_norm,
-    #                           summ_protein_norm = input$summ_protein_norm,
-    #                           summ_remove_norm = input$summ_remove_norm,
-    #                           summ_remove_empty = input$summ_remove_empty,
-    #                           summ_maxquantilecensor = input$summ_maxquantilecensor,
-    #                           group_modttest = input$group_modttest)
-    #   
-    #   rv$groupcomp_data <- data_groupcomparisons(dataupload_data$preprocessed_data, additional_args)
-    #   
-    # }
-    # 
-    # perform_uniprot_search <- function(input) {
-    #   
-    #   # call util func to fetch uniprot data and construct table; returns the table
-    #   req(rv$groupcomp_data) # this could be changed to validate() to check if groupcomp_data is NULL or not
-    #   
-    #   if (input$taxID == "") { # throw a warning if nothing is submitted
-    #     showFeedbackWarning("taxID", "Taxonomic ID or at least partial species name is required") 
-    #     # Check for non numeric can be also done with is.na(as.numeric(input$taxID)) which returns TRUE if input is not numeric
-    #   } else if (!grepl("^\\d+$", input$taxID)) { # if the input is not numeric, treat it as a species name pattern and fetch uniprot taxa IDs based on it
-    #     hideFeedback("taxID")
-    #     rv$uniprot_species <- uniprot_fetch_species(input$taxID)
-    #   } else { # finally, if a numeric value is given use it as the taxa ID to fetch uniprot data; TODO: this should still be validated so that the user cannot submit alphanumeric values etc.
-    #     # call uniprot_validate_fields() to check the columns the user is about to call; show feedback if they're invalid
-    #     # validation here is buggy; check the utils function, likely a problem with the way input$uniprot_columns is unlisted and checked
-    #     if(uniprot_validate_fields(input$uniprot_columns)){
-    #       hideFeedback("taxID")
-    #       hideFeedback("uniprot_columns")
-    #       rv$uniprot_data <- uniprot_fetch(rv$groupcomp_data, input$taxID, input$uniprot_columns)  
-    #     }
-    #     else {
-    #       showFeedbackWarning("uniprot_columns", "Wrong UniProt fields")
-    #     }
-    #   }
-    #   
-    # }
-    
-      
-    # observe({
-    #   rv$groupcomp_data <- data_groupcomparisons(dataupload_data$preprocessed_data)
-    #   shinyjs::show("data_download")
-    # }) %>% bindEvent(input$groupcomparisons)
-    
-    # observe block gets triggered correctly, but the shinyjs::show function doesn't work
-    # using showElement() works for enabling the taxID and uniprottable UI elements
-    # check conditionalPanel for controlling the UI elements
-    # observe({
-    #   if (input$groupcomparisons > 0) {
-    #     # cat("shinyjs button test")
-    #     showElement("taxID")
-    #     showElement("uniprottable")
-    #     # shinyjs::show("taxID", asis = TRUE)
-    #     # shinyjs::show("uniprottable", asis = TRUE)
-    #   }
-    # })
-    
     observe({
       # call util func to fetch uniprot data and construct table; returns the table
-      req(rv$groupcomp_data) # this could be changed to validate() to check if groupcomp_data is NULL or not
+      req(data$groupcomp_data) # this could be changed to validate() to check if groupcomp_data is NULL or not
 
       if (input$taxID == "") { # throw a warning if nothing is submitted
         showFeedbackWarning("taxID", "Taxonomic ID or at least partial species name is required")
         # Check for non numeric can be also done with is.na(as.numeric(input$taxID)) which returns TRUE if input is not numeric
       } else if (!grepl("^\\d+$", input$taxID)) { # if the input is not numeric, treat it as a species name pattern and fetch uniprot taxa IDs based on it
         hideFeedback("taxID")
-        rv$uniprot_species <- uniprot_fetch_species(input$taxID)
+        data$uniprot_species <- uniprot_fetch_species(input$taxID)
       } else { # finally, if a numeric value is given use it as the taxa ID to fetch uniprot data; TODO: this should still be validated so that the user cannot submit alphanumeric values etc.
         # call uniprot_validate_fields() to check the columns the user is about to call; show feedback if they're invalid
         # validation here is buggy; check the utils function, likely a problem with the way input$uniprot_columns is unlisted and checked
         if(uniprot_validate_fields(input$uniprot_columns)){
           hideFeedback("taxID")
           hideFeedback("uniprot_columns")
-          rv$uniprot_data <- uniprot_fetch(rv$groupcomp_data, input$taxID, input$uniprot_columns)
+          data$uniprot_data <- uniprot_fetch(data$groupcomp_data, input$taxID, input$uniprot_columns)
         }
         else {
           showFeedbackWarning("uniprot_columns", "Wrong UniProt fields")
@@ -286,7 +208,7 @@ dataprocess_server <- function(id, dataupload_data) {
     }) %>% bindEvent(input$uniprottable)
     
     output$groupcomp_table <- renderDT({df <- datatable(
-        rv$groupcomp_data,
+        data$groupcomp_data,
         rownames = FALSE,
         options = list(
           scrollX = TRUE,
@@ -309,7 +231,7 @@ dataprocess_server <- function(id, dataupload_data) {
       # datatable modification from https://stackoverflow.com/a/66037552
       # shortens cells with characters > 30 and enables tooltip to view the cell data
       df <- datatable(
-        rv$uniprot_data,
+        data$uniprot_data,
         rownames = FALSE,
         options = list(
           scrollX = TRUE,
@@ -332,7 +254,7 @@ dataprocess_server <- function(id, dataupload_data) {
       # datatable modification from https://stackoverflow.com/a/66037552
       # shortens cells with characters > 30 and enables tooltip to view the cell data
       df <- datatable(
-        rv$uniprot_species,
+        data$uniprot_species,
         rownames = FALSE,
         options = list(
           scrollX = TRUE,
@@ -370,13 +292,13 @@ dataprocess_server <- function(id, dataupload_data) {
         
         get_data <- function() {
           if(selected_tab() == "Group comparisons") {
-            data <- rv$groupcomp_data
+            data <- data$groupcomp_data
           }
           else if(selected_tab() == "UniProt data") {
-            data <- rv$uniprot_data
+            data <- data$uniprot_data
           }
           else if(selected_tab() == "UniProt taxa IDs") {
-            data <- rv$uniprot_species
+            data <- data$uniprot_species
           }
           return(data)
         }
@@ -384,19 +306,5 @@ dataprocess_server <- function(id, dataupload_data) {
         write.csv(get_data(), file, row.names = FALSE)}
     )
     
-    rv
-    
   })
-  
-}
-
-processTest <- function() {
-
-  myData <- iris
-  ui <- fluidPage(dataprocess_ui("x"))
-  server <- function(input, output, session){
-    dataprocess_server("x", reactive({myData}))
-  }
-
-  shinyApp(ui, server)
 }

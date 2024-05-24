@@ -5,6 +5,8 @@
 #       If you want to do any selection from the network graph, you'd likely need to plot it with some other library.
 # TODO: Check if the currently used MSstats functions can be changed to the more base level ones (access with MSstats:::), so hopefully log file generation can be turned off properly.
 # TODO: Implement an enrichment analysis option like in ProteomeDiscoverer: i.e., perform GO term enrichment analysis on a selected set of genes
+# FIXME: Probably just merge Plotting and Network modules to simplify the shared data handling
+# TODO: Could still implement a global_data object in the main app to act as a data storage that's shared between modules
 
 library(shiny)
 library(shinyjs)
@@ -19,7 +21,6 @@ library(UniProt.ws)
 library(DT)
 library(bslib)
 library(tidyverse)
-# library(EnhancedVolcano)
 library(ggplot2)
 library(ggrepel)
 library(plotly)
@@ -139,43 +140,17 @@ ui <- page_navbar(
   nav_item(input_dark_mode(id = "dark_mode", mode = "light")),
   
   padding = "3px",
-
-  # fluidRow(
-  # navlistPanel(
-  #   tabPanel("Data upload", dataupload_ui("upload")),
-  #   tabPanel("Data processing", dataprocess_ui("process")),
-  #   tabPanel("Plotting", plotting_ui("plotting")),
-  # )
-  # ),
-  # 
-  # fluidRow(
-  #   mainPanel(
-  #     tags$hr(),
-  #       tabsetPanel(id = "output_tables", type = "pills",
-  #                   tabPanel(id = "preprocessed_table", "Preprocessed data", DTOutput("preprocessed_table")),
-  #                   tabPanel(id = "groupcomp_table", "Group comp data", DTOutput("groupcomp_table")),
-  #                   tabPanel(id = "uniprot_table", "Uniprot data", DTOutput("uniprot_table")),
-  #                   tabPanel(id = "plot_output", "Volcano Plot", plotOutput("plot_output")),
-  #                   tabPanel(id = "plot_output2", "Enhanced Volc. Plot", plotOutput("plot_output2")),
-  #                   tabPanel(id = "uniprot_species", "Uniprot species", DTOutput("uniprot_species")),
-  #       )
-  #   )
-  # )
 )
 
 server <- function(input, output, session) {
   
   # bs_themer()
   
-  # A possible solution for the shared data problems might be to create an initial 
-  # shared data object in the main app when the data is first uploaded. Then, use that SDO
-  # as the future data object for anything else. However, this will need another SDO created for the uniprot table.
+  data <- reactiveValues()
   
-  upload_values <- dataupload_server("upload")
-  dataprocess_values <- dataprocess_server("process", upload_values)
-  # 
-  # # Call the server function of the plotting module
-  plotting_values <- plotting_server("plotting", dataprocess_values)
+  dataupload_server("upload", data)
+  dataprocess_server("process", data)
+  plotting_server("plotting", data)
   
   # Hacky way to force switch to network tab when the shared data is generated from the plotting module.
   # Updates the namespace and links the SDO between the plotting and network modules.
@@ -183,19 +158,8 @@ server <- function(input, output, session) {
   #   nav_select("main_tabs", "Network analysis")
   # }) %>% bindEvent(plotting_values$t)
   
-  network_values <- network_server("network", plotting_values)
-  
-  # output$preprocessed_table <- renderDT(upload_values$preprocessed_data) # output in mod-dataupload
-  
-  #check why these 3 don't show up if they're disabled in the main app (compare to dataupload module, which works)
-  # output$groupcomp_table <- renderDT(dataprocess_values$groupcomp_data) # output in mod-dataprocess
-  # output$uniprot_table <- renderDT(dataprocess_values$uniprot_data) # output in mod-dataprocess
-  # output$uniprot_species <- renderDT(dataprocess_values$uniprot_species) # output in mod-dataprocess
-  # 
-  # output$plot_output <- renderPlotly(plotting_values$p1) # output in mod-plotting
-  # output$plot_output2 <- renderPlot(plotting_values$p2) # output in mod-plotting
- 
-}
+  network_server("network", data)
 
+}
 
 shinyApp(ui, server)

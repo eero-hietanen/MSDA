@@ -55,27 +55,12 @@ dataupload_ui <- function(id) {
       )
     )
   )
-  
-  # Defining UI layout in the module instead of the main app. Call module UI inside the main app's tabPanel.
-  # tagList(
-  #   sidebarPanel(
-  #     fileInput(ns("evidence"), "Evidence"),
-  #     fileInput(ns("annotation"), "Annotation"),
-  #     actionButton(ns("preprocess"), "Preprocess files"),
-  #   ),
-  #   mainPanel(
-  #     DTOutput(ns("preprocessed_table")),
-  #     shinyjs::hidden(downloadButton(ns("data_download"), "Download data")),
-  #   ),
-  # )
 }
 
-dataupload_server <- function(id) {
+dataupload_server <- function(id, data) {
   
   moduleServer(id, function(input, output, session) {
 
-    rv <- reactiveValues(preprocessed_data = NULL)
-    
     output$otheroptions <- renderUI({
       if(reactive(input$source_type)() == "MaxQuant") { # Previous comparison error here was caused by 1) attempting to call without reactive(), and 2) calling the reactive object instead of the VALUE held in the reactive by using () at the end
         fileInput(
@@ -89,13 +74,12 @@ dataupload_server <- function(id) {
     # Modify the data_preprocessing func in utils.R.
     # Also need to pass input$proteingroups if MQ is selected. Look into adding '...' to funcs to pass arguments. Look into 'do.call' and passing the arguments as a list. If the list is named based on the input$[name], then should be able to parse based on that in the utils function.
     observe({
-      rv$preprocessed_data <- data_preprocessing(input$evidence, input$annotation, input$source_type)
+      data$preprocessed_data <- data_preprocessing(input$evidence, input$annotation, input$source_type)
       shinyjs::show("data_download")
     }) %>% bindEvent(input$preprocess)
-
     
     output$preprocessed_table <- renderDT({
-      datatable(rv$preprocessed_data,
+      datatable(data$preprocessed_data,
                 rownames = FALSE,
                 options = list(
                   scrollX = TRUE,
@@ -113,31 +97,15 @@ dataupload_server <- function(id) {
                 )
       )
     })
-    # reactive({
-    #   list(preprocessed_data = rv$preprocessed_data)
-    # })
-    
+
     output$data_download <- downloadHandler(
       filename = function() {
         paste('preprocessed_data-', Sys.Date(), '.csv', sep="")
       },
       content = function(file) {
-        write.csv(rv$preprocessed_data, file, row.names = FALSE)
+        write.csv(data$preprocessed_data, file, row.names = FALSE)
       }
     )
     
-    rv
-    
   })
-  
-}
-
-uploadTest <- function() {
-  
-  ui <- fluidPage(dataupload_ui("x"))
-  server <- function(input, output, session){
-    dataupload_server("x")
-  }
-  
-  shinyApp(ui, server)
 }

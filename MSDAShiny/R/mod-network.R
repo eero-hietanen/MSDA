@@ -95,11 +95,11 @@ network_ui <- function(id) {
         # What options does a STRINGdb search usually need? Target species, what sort of network to build etc.? Check their website
         # actionButton(ns("button"), "click"),
         fluidRow(
-          actionButton(ns("build_network"), label = "Update network", width = "155px"),
+          actionButton(ns("update_network"), label = "Update network", width = "155px"),
           actionButton(ns("remove_nodes"), label = "-5", width = "auto"),
           actionButton(ns("add_nodes"), label = "+5", width = "auto"),
         style = 'display: flex; justify-content: space-around;'),
-        actionButton(ns("network_selected"), label = "Network selected rows"),
+        # actionButton(ns("network_selected"), label = "Network selected rows"),
         actionButton(ns("test_button"), label = "Test enrichment"),
         # downloadButton(ns("data_download"), "Download table"),
       )
@@ -133,30 +133,30 @@ network_server <- function(id, data) {
     
     ns <- session$ns
     
-    # Evaluating data here means you can call rv$uniprot_data in renderDT without parenthesis
+    # Evaluating data here means you can call data$uniprot_data in renderDT without parenthesis
     # However, it means that the table is not immediately rendered when data becomes available
-    # If you evaluate rv$uniprot_data in the renderDT, data shows up once it's available
-    rv <- data
-    rv$gene_user <- NULL
+    # If you evaluate data$uniprot_data in the renderDT, data shows up once it's available
+    # rv <- data
+    # data$gene_user <- NULL
     
     # Network selected rows together with the user input genes.
     observe({
       gene_list <- fetch_selected_genes()
       
-      rv$gene_list <- gene_list
-      rv$gene_user <- input$gene_user
-      rv$node_count <- input$node_count
-      rv$interaction_significance <- input$interaction_significance
-      rv$network_type <- input$network_type
-      rv$network_flavor <- input$network_flavor
-      rv$species_id <- input$species_id
-      rv$query_labels <- as.integer(input$query_labels)
+      data$gene_list <- gene_list
+      data$gene_user <- input$gene_user
+      data$node_count <- input$node_count
+      data$interaction_significance <- input$interaction_significance
+      data$network_type <- input$network_type
+      data$network_flavor <- input$network_flavor
+      data$species_id <- input$species_id
+      data$query_labels <- as.integer(input$query_labels)
       
       additional_args <- build_args()
-      rv$verbtext <- additional_args
+      data$verbtext <- additional_args
       session$sendCustomMessage("string_network_fetch", additional_args)
       
-    }) %>% bindEvent(input$network_selected)
+    }) %>% bindEvent(input$update_network)
     
     # Test button observe event. Use for testing enrichment.
     observe({
@@ -166,49 +166,35 @@ network_server <- function(id, data) {
       cat("selected ", selected_genes, "\n")
       cat("user ", user_genes, "\n")
       cat("combined ", genes, "\n")
-      rv$enrichment <- string_api_call(genes)
+      data$enrichment <- string_api_call(genes)
     }) %>% bindEvent(input$test_button)
     
     # Observes the add_nodes button and increases the network nodes when clicked.
     observe({
-      rv$node_count <- rv$node_count + 5
+      data$node_count <- data$node_count + 5
       additional_args <- build_args()
-      updateNumericInput(session, "node_count", value = rv$node_count)
+      updateNumericInput(session, "node_count", value = data$node_count)
       session$sendCustomMessage('string_network_fetch', additional_args)
     }) %>% bindEvent(input$add_nodes)
 
     # Observes the remove_nodes button and decreases the network nodes when clicked.    
     observe({
-      rv$node_count <- rv$node_count - 5
+      data$node_count <- data$node_count - 5
       additional_args <- build_args()
-      updateNumericInput(session, "node_count", value = rv$node_count)
+      updateNumericInput(session, "node_count", value = data$node_count)
       session$sendCustomMessage('string_network_fetch', additional_args)
     }) %>% bindEvent(input$remove_nodes)
-    
-    # Tied to the "Update network" UI button. This should be merged with the "Network selected rows" so that one button does everything.
-    observe({
-      rv$gene_list <- input$gene_list
-      rv$node_count <- input$node_count
-      rv$interaction_significance <- input$interaction_significance
-      rv$network_type <- input$network_type
-      rv$network_flavor <- input$network_flavor
-      rv$species_id <- input$species_id
-      rv$query_labels <- as.integer(input$query_labels)
-      
-      additional_args <- build_args()
-      session$sendCustomMessage("string_network_fetch", additional_args)
-    }) %>% bindEvent(input$build_network)
-    
+
     # Verbose text output used for monitoring variable values.
     output$verb_text_out <- renderPrint({
-      req(!is.null(rv$verbtext))
-      rv$verbtext
+      req(!is.null(data$verbtext))
+      data$verbtext
     })
     
     # Assigning a reactive value to a variable needs the RV to be evaluated with()
     # If calling for the RV inside the datatable() func, then it works without
     output$network_table <- renderDT({
-      datatable(rv$t,
+      datatable(data$t,
                 rownames = FALSE,
                 options = list(
                   scrollX = TRUE,
@@ -230,7 +216,7 @@ network_server <- function(id, data) {
     # Functional enrichment table output. Should return a parsed version of the STRING API call using httr2.
     # Currently could only be made to work with the user input. Table selection has a problem with reacing the actual protein names.
     output$enrichment_table <- renderDT({
-      datatable(rv$enrichment,
+      datatable(data$enrichment,
                 rownames = FALSE,
                 options = list(
                   scrollX = TRUE,
@@ -254,9 +240,9 @@ network_server <- function(id, data) {
     # At the same time, things like the STRING DB API call to build the network correctly fethces the protein name when the call is sent.
     fetch_selected_genes <- function() {
       
-      req(!is.null(rv$t))
+      req(!is.null(data$t))
       
-      table <- rv$t
+      table <- data$t
       selection <- table$selection() # returns an array of incides
       orig_data <- table$origData() # fetch original data that can be modified
       
@@ -264,10 +250,10 @@ network_server <- function(id, data) {
         # filtered <- subset(table, selection)$Protein
         filtered <- orig_data[selection, "Protein"] # Subsets the original data using indices from 'selection', restricts it to 'Protein' column. Essentially fetches the "Protein" column for selected rows.
         filtered <- as.character(filtered[[1]]) # This subsets and does a character vector conversion on the column, as the input is still a data.table and we want to only access the field values.
-        rv$filtered <- filtered
+        data$filtered <- filtered
       } else {
         filtered <- NULL
-        rv$filtered <- filtered
+        data$filtered <- filtered
       }
       
       filtered
@@ -278,14 +264,14 @@ network_server <- function(id, data) {
     build_args <- function() {
       
       additional_args <- list(
-        gene_list = rv$gene_list,
-        gene_user = rv$gene_user,
-        node_count = rv$node_count,
-        interaction_significance = rv$interaction_significance,
-        network_type = rv$network_type,
-        network_flavor = rv$network_flavor,
-        species_id = rv$species_id,
-        query_labels = as.integer(rv$query_labels)
+        gene_list = data$gene_list,
+        gene_user = data$gene_user,
+        node_count = data$node_count,
+        interaction_significance = data$interaction_significance,
+        network_type = data$network_type,
+        network_flavor = data$network_flavor,
+        species_id = data$species_id,
+        query_labels = as.integer(data$query_labels)
       )
       
       additional_args

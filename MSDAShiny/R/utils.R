@@ -59,46 +59,49 @@ data_groupcomparisons <- function(input, ...) {
   test.pairwise$ComparisonResult
 }
 
+# #####################################
+# # ----- Volcano plot (manual) ----- #
+# #####################################
+# 
+# # Volcano plot through ggplot2. Requires comparisonResult from group comparisons
+# # Default cutoff = 0.05.
+# # TODO: Check plotting through groupComparisonPlots()
+# 
+# plotting_volcano <- function(input, ...) {
+#   
+#   args <- unlist(list(...))
+#   
+#   #set up a df for the plotting values
+#   plotdf <- input
+#   #add a categorical column for up/down regulated genes; default value "NS"
+#   plotdf$diffexp <- "NS"
+#   # Changed the log2FC vals from 0.5 to 0.6, also for xintercept below (geom_vline()); change back if wrong; check standard log2FC cutoff
+#   plotdf$diffexp[plotdf$log2FC > as.numeric(args[["plot_fccutoff"]]) & plotdf$adj.pvalue < as.numeric(args[["plot_pcutoff"]])] <- "Up-regulated"
+#   # as.numeric is done for the negative value because otherwise the plotting function breaks 
+#   plotdf$diffexp[plotdf$log2FC < -as.numeric(args[["plot_fccutoff"]]) & plotdf$adj.pvalue < as.numeric(args[["plot_pcutoff"]])] <- "Down-regulated"
+#   #set up base plot; note to log-transform p-value
+#   p <- ggplot(plotdf, aes(x=log2FC, y=-log10(adj.pvalue), col=factor(diffexp), text = plotdf$Protein)) + geom_point()
+#   #add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
+#   p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="#c91010") + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="#c91010")
+#   p <- p + labs(x = "log2FC", y = "adjusted p.value", title = args[["plot_title"]], color = "")
+#   #adjust colour mapping
+#   # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
+#   
+#   #names for DE genes can be toggled by adding another column to the 'plotdf' and
+#   #copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
+#   #check 'ggrepel' library and the geom_text_repel() function for label placement
+#   
+#   # Return a list with the plot p and the plotdf. Use plotdf as the data table and enable download signif. proteins through it.
+#   return(list(p = p, plotdf = plotdf))
+#   # p
+# }
+
 #####################################
 # ----- Volcano plot (manual) ----- #
+# Crosstalk enabled plotting        #
 #####################################
 
-# Volcano plot through ggplot2. Requires comparisonResult from group comparisons
-# Default cutoff = 0.05.
-# TODO: Check plotting through groupComparisonPlots()
-
 plotting_volcano <- function(input, ...) {
-  
-  args <- unlist(list(...))
-  
-  #set up a df for the plotting values
-  plotdf <- input
-  #add a categorical column for up/down regulated genes; default value "NS"
-  plotdf$diffexp <- "NS"
-  # Changed the log2FC vals from 0.5 to 0.6, also for xintercept below (geom_vline()); change back if wrong; check standard log2FC cutoff
-  plotdf$diffexp[plotdf$log2FC > as.numeric(args[["plot_fccutoff"]]) & plotdf$adj.pvalue < as.numeric(args[["plot_pcutoff"]])] <- "Up-regulated"
-  # as.numeric is done for the negative value because otherwise the plotting function breaks 
-  plotdf$diffexp[plotdf$log2FC < -as.numeric(args[["plot_fccutoff"]]) & plotdf$adj.pvalue < as.numeric(args[["plot_pcutoff"]])] <- "Down-regulated"
-  #set up base plot; note to log-transform p-value
-  p <- ggplot(plotdf, aes(x=log2FC, y=-log10(adj.pvalue), col=factor(diffexp), text = plotdf$Protein)) + geom_point()
-  #add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
-  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="#c91010") + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="#c91010")
-  p <- p + labs(x = "log2FC", y = "adjusted p.value", title = args[["plot_title"]], color = "")
-  #adjust colour mapping
-  # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
-  
-  #names for DE genes can be toggled by adding another column to the 'plotdf' and
-  #copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
-  #check 'ggrepel' library and the geom_text_repel() function for label placement
-  
-  # Return a list with the plot p and the plotdf. Use plotdf as the data table and enable download signif. proteins through it.
-  return(list(p = p, plotdf = plotdf))
-  # p
-}
-
-## Testing function for plotting while Crosstalk is enabled ##
-
-plotting_volcano_test <- function(input, ...) {
   
   args <- unlist(list(...))
   
@@ -119,18 +122,6 @@ plotting_volcano_test <- function(input, ...) {
   return(list(p = p, plotdf = input)) # Can just return p here
   # p
 }
-
-# ##############################################
-# # ----- Volcano plot (EnhancedVolcano) ----- #
-# ##############################################
-# 
-# plotting_volcano2 <- function(input, ...) {
-#   
-#   plotdf <- input
-#   args <- list(...)
-#   
-#   EnhancedVolcano(plotdf, lab=plotdf$Protein, x="log2FC", y="adj.pvalue", title = args$plot_title, pCutoff = args$plot_pcutoff, FCcutoff = args$plot_fccutoff)
-# }
 
 ##################################
 # ----- UniProt data fetch ----- #
