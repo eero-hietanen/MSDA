@@ -27,12 +27,11 @@
 #     };"
 
 network_ui <- function(id) {
-  
   ns <- NS(id)
-  
+
   useShinyjs()
   # extendShinyjs(text = jsCode, functions = "loadStringData")
-  
+
   # Something causing dysfunction here. Onclick for the button works, the extended js function doesn't seem to be called though.
   # Probabaly something to do with namespacing/modules? Try to put a print statement inside the 'loadStringData' to see if it gets called.
   # TODO: Look into implementing the loadStringData() JS function through Shiny.addCustomMessageHandler
@@ -44,7 +43,7 @@ network_ui <- function(id) {
   #           "identifiers": gene,
   #           "network_flavor":"confidence"})
   #   }'), functions = "loadStringData")
-  
+
   # tags$script(HTML("Shiny.addCustomMessageHandler('string_network_fetch', function(gene) {
   #     console.log('customMessageHandler loaded with', gene)
   #     getSTRING('https://string-db.org', {
@@ -53,7 +52,7 @@ network_ui <- function(id) {
   #           'network_flavor':'confidence'
   #       });
   # });"))
-  
+
   grid_container(
     layout = c(
       "network_side network_main"
@@ -98,7 +97,8 @@ network_ui <- function(id) {
           actionButton(ns("update_network"), label = "Update network", width = "155px"),
           actionButton(ns("remove_nodes"), label = "-5", width = "auto"),
           actionButton(ns("add_nodes"), label = "+5", width = "auto"),
-        style = 'display: flex; justify-content: space-around;'),
+          style = "display: flex; justify-content: space-around;"
+        ),
         # actionButton(ns("network_selected"), label = "Network selected rows"),
         actionButton(ns("test_button"), label = "Test enrichment"),
         # downloadButton(ns("data_download"), "Download table"),
@@ -109,40 +109,40 @@ network_ui <- function(id) {
       card_body(
         tags$div(id = "stringEmbedded"), # Not namespaced as the JS library doesn't find the namespaced element name
         # DTOutput(outputId = ns("network_table")),
-        navset_underline(id = ns("network_main_tabs"),
-                         nav_panel(
-                           title = "Network data",
-                           DTOutput(outputId = ns("network_table"), width = "100%"),
-                         ),
-                         nav_panel(
-                           title = "Enrichment analysis",
-                           DTOutput(outputId = ns("enrichment_table"), width = "100%"),
-                         ),
-                         nav_panel(
-                           title = "Verbose text out",
-                           verbatimTextOutput(outputId = ns("verb_text_out")),
-                         ),
+        navset_underline(
+          id = ns("network_main_tabs"),
+          nav_panel(
+            title = "Network data",
+            DTOutput(outputId = ns("network_table"), width = "100%"),
+          ),
+          nav_panel(
+            title = "Enrichment analysis",
+            DTOutput(outputId = ns("enrichment_table"), width = "100%"),
+          ),
+          nav_panel(
+            title = "Verbose text out",
+            verbatimTextOutput(outputId = ns("verb_text_out")),
+          ),
+        )
       )
     )
-    ))
+  )
 }
 
 network_server <- function(id, data) {
-  
   moduleServer(id, function(input, output, session) {
-    
     ns <- session$ns
-    
+
     # Evaluating data here means you can call data$uniprot_data in renderDT without parenthesis
     # However, it means that the table is not immediately rendered when data becomes available
     # If you evaluate data$uniprot_data in the renderDT, data shows up once it's available
     # rv <- data
     # data$gene_user <- NULL
-    
+
     # Network selected rows together with the user input genes.
     observe({
       gene_list <- fetch_selected_genes()
-      
+
       data$gene_list <- gene_list
       data$gene_user <- input$gene_user
       data$node_count <- input$node_count
@@ -151,16 +151,15 @@ network_server <- function(id, data) {
       data$network_flavor <- input$network_flavor
       data$species_id <- input$species_id
       data$query_labels <- as.integer(input$query_labels)
-      
+
       additional_args <- build_args()
       data$verbtext <- additional_args
       session$sendCustomMessage("string_network_fetch", additional_args)
-      
     }) %>% bindEvent(input$update_network)
-    
+
     # Test button observe event. Use for testing enrichment.
     observe({
-      selected_genes <- fetch_selected_genes() 
+      selected_genes <- fetch_selected_genes()
       user_genes <- input$gene_user
       genes <- c(selected_genes, user_genes)
       cat("selected ", selected_genes, "\n")
@@ -168,21 +167,21 @@ network_server <- function(id, data) {
       cat("combined ", genes, "\n")
       data$enrichment <- string_api_call(genes)
     }) %>% bindEvent(input$test_button)
-    
+
     # Observes the add_nodes button and increases the network nodes when clicked.
     observe({
       data$node_count <- data$node_count + 5
       additional_args <- build_args()
       updateNumericInput(session, "node_count", value = data$node_count)
-      session$sendCustomMessage('string_network_fetch', additional_args)
+      session$sendCustomMessage("string_network_fetch", additional_args)
     }) %>% bindEvent(input$add_nodes)
 
-    # Observes the remove_nodes button and decreases the network nodes when clicked.    
+    # Observes the remove_nodes button and decreases the network nodes when clicked.
     observe({
       data$node_count <- data$node_count - 5
       additional_args <- build_args()
       updateNumericInput(session, "node_count", value = data$node_count)
-      session$sendCustomMessage('string_network_fetch', additional_args)
+      session$sendCustomMessage("string_network_fetch", additional_args)
     }) %>% bindEvent(input$remove_nodes)
 
     # Verbose text output used for monitoring variable values.
@@ -190,62 +189,67 @@ network_server <- function(id, data) {
       req(!is.null(data$verbtext))
       data$verbtext
     })
-    
+
     # Assigning a reactive value to a variable needs the RV to be evaluated with()
     # If calling for the RV inside the datatable() func, then it works without
-    output$network_table <- renderDT({
-      datatable(data$t,
-                rownames = FALSE,
-                options = list(
-                  scrollX = TRUE,
-                  searching = TRUE,
-                  pageLength = 25,
-                  columnDefs = list(list(
-                    targets = "_all",
-                    render = JS(
-                      "function(data, type, row, meta) {",
-                      "return type === 'display' && data != null && data.length > 30 ?",
-                      "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
-                      "}"
-                    )
-                  ))
-                )
-      )
-    }, server = FALSE)
-    
+    output$network_table <- renderDT(
+      {
+        datatable(data$t,
+          rownames = FALSE,
+          options = list(
+            scrollX = TRUE,
+            searching = TRUE,
+            pageLength = 25,
+            columnDefs = list(list(
+              targets = "_all",
+              render = JS(
+                "function(data, type, row, meta) {",
+                "return type === 'display' && data != null && data.length > 30 ?",
+                "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
+                "}"
+              )
+            ))
+          )
+        )
+      },
+      server = FALSE
+    )
+
     # Functional enrichment table output. Should return a parsed version of the STRING API call using httr2.
     # Currently could only be made to work with the user input. Table selection has a problem with reacing the actual protein names.
-    output$enrichment_table <- renderDT({
-      datatable(data$enrichment,
-                rownames = FALSE,
-                options = list(
-                  scrollX = TRUE,
-                  searching = TRUE,
-                  pageLength = 25,
-                  columnDefs = list(list(
-                    targets = "_all",
-                    render = JS(
-                      "function(data, type, row, meta) {",
-                      "return type === 'display' && data != null && data.length > 30 ?",
-                      "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
-                      "}"
-                    )
-                  ))
-                )
-      )
-    }, server = FALSE)
-    
+    output$enrichment_table <- renderDT(
+      {
+        datatable(data$enrichment,
+          rownames = FALSE,
+          options = list(
+            scrollX = TRUE,
+            searching = TRUE,
+            pageLength = 25,
+            columnDefs = list(list(
+              targets = "_all",
+              render = JS(
+                "function(data, type, row, meta) {",
+                "return type === 'display' && data != null && data.length > 30 ?",
+                "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
+                "}"
+              )
+            ))
+          )
+        )
+      },
+      server = FALSE
+    )
+
     # Fethces the selected genes from the table based on the selection.
     # It should retrieve the protein names from the "Protein" column, however it seems to just return row indices.
     # At the same time, things like the STRING DB API call to build the network correctly fethces the protein name when the call is sent.
     fetch_selected_genes <- function() {
-      
       req(!is.null(data$t))
-      
+
       table <- data$t
       selection <- table$selection() # returns an array of incides
       orig_data <- table$origData() # fetch original data that can be modified
-      
+
       if (!is.null(selection) && length(selection) > 0) {
         # filtered <- subset(table, selection)$Protein
         filtered <- orig_data[selection, "Protein"] # Subsets the original data using indices from 'selection', restricts it to 'Protein' column. Essentially fetches the "Protein" column for selected rows.
@@ -255,14 +259,13 @@ network_server <- function(id, data) {
         filtered <- NULL
         data$filtered <- filtered
       }
-      
+
       filtered
     }
-    
+
     # Builds a list of arguments that are passed to the STRING API call.
     # Fed to the JS function as an options object in order to access named arguments.
     build_args <- function() {
-      
       additional_args <- list(
         gene_list = data$gene_list,
         gene_user = data$gene_user,
@@ -273,9 +276,8 @@ network_server <- function(id, data) {
         species_id = data$species_id,
         query_labels = as.integer(data$query_labels)
       )
-      
+
       additional_args
     }
-    
   })
 }

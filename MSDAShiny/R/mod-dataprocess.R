@@ -25,7 +25,6 @@
 # TODO: Switch to UniProt tab when the data is fetched
 
 dataprocess_ui <- function(id) {
-  
   useShinyjs()
   ns <- NS(id)
 
@@ -49,10 +48,11 @@ dataprocess_ui <- function(id) {
         accordion(
           accordion_panel(
             "Group comparisons",
-            selectInput(inputId = ns("summ_method"),
-                        label = "Summarization method",
-                        choices = list("MSstats" = "msstats", "Median Polish" = "MedianPolish", "Median" = "Median", "LogSum" = "LogSum")
-                        ),
+            selectInput(
+              inputId = ns("summ_method"),
+              label = "Summarization method",
+              choices = list("MSstats" = "msstats", "Median Polish" = "MedianPolish", "Median" = "Median", "LogSum" = "LogSum")
+            ),
             checkboxInput(inputId = ns("summ_peptide_norm"), label = tooltip(
               trigger = list(
                 "Peptide level normalization",
@@ -106,7 +106,7 @@ dataprocess_ui <- function(id) {
               inputId = ns("groupcomparisons"),
               label = "Compare groups",
               width = "100%"
-              ),
+            ),
           ),
           accordion_panel(
             "UniProt search",
@@ -114,16 +114,14 @@ dataprocess_ui <- function(id) {
               trigger = list(
                 "Taxonomic ID or species name",
                 bs_icon("info-circle")
-                ), "UniProt taxa ID (numeric) or a species name to perform a search for taxa IDs (name can be partial). Note that Genus names are capitalizied while species names are not."
-              ),
-            ),
+              ), "UniProt taxa ID (numeric) or a species name to perform a search for taxa IDs (name can be partial). Note that Genus names are capitalizied while species names are not."
+            ), ),
             textInput(inputId = ns("uniprot_columns"), label = tooltip(
               trigger = list(
                 "Additional UniProt fields",
                 bs_icon("info-circle")
-                ), "UniProt fields to add to the result table. Separated by a space, e.g. 'go xref_pdb protein_name'. Check 'UniProt help' link for a full list of fields."
-              ),
-            ),
+              ), "UniProt fields to add to the result table. Separated by a space, e.g. 'go xref_pdb protein_name'. Check 'UniProt help' link for a full list of fields."
+            ), ),
             actionButton(
               inputId = ns("uniprottable"),
               label = "Fetch UniProt data",
@@ -131,7 +129,7 @@ dataprocess_ui <- function(id) {
             ),
             # target="_blank" is required so that the link opens in a new browser tab.
             # Requires "Run External" option when app is launched from RStudio
-            tags$a(href="https://www.uniprot.org/help/return_fields", "UniProt help", target="_blank"),
+            tags$a(href = "https://www.uniprot.org/help/return_fields", "UniProt help", target = "_blank"),
           ),
         ),
         tags$hr(),
@@ -146,7 +144,8 @@ dataprocess_ui <- function(id) {
       card_header("Data tables"),
       card_body(
         # bslib might have a solution for hidden panels.
-        navset_underline(id = ns("dataprocess_tabs"),
+        navset_underline(
+          id = ns("dataprocess_tabs"),
           nav_panel(
             title = "Group comparisons",
             DTOutput(outputId = ns("groupcomp_table"), width = "100%"),
@@ -166,23 +165,22 @@ dataprocess_ui <- function(id) {
 }
 
 dataprocess_server <- function(id, data) {
-
   moduleServer(id, function(input, output, session) {
-    
     observe({
-
-      additional_args <- list(summ_method = input$summ_method,
-                              summ_peptide_norm = input$summ_peptide_norm,
-                              summ_protein_norm = input$summ_protein_norm,
-                              summ_remove_norm = input$summ_remove_norm,
-                              summ_remove_empty = input$summ_remove_empty,
-                              summ_maxquantilecensor = input$summ_maxquantilecensor,
-                              group_modttest = input$group_modttest)
+      additional_args <- list(
+        summ_method = input$summ_method,
+        summ_peptide_norm = input$summ_peptide_norm,
+        summ_protein_norm = input$summ_protein_norm,
+        summ_remove_norm = input$summ_remove_norm,
+        summ_remove_empty = input$summ_remove_empty,
+        summ_maxquantilecensor = input$summ_maxquantilecensor,
+        group_modttest = input$group_modttest
+      )
 
       data$groupcomp_data <- data_groupcomparisons(data$preprocessed_data, additional_args)
       shinyjs::show("data_download")
     }) %>% bindEvent(input$groupcomparisons)
-    
+
     observe({
       # call util func to fetch uniprot data and construct table; returns the table
       req(data$groupcomp_data) # this could be changed to validate() to check if groupcomp_data is NULL or not
@@ -196,18 +194,18 @@ dataprocess_server <- function(id, data) {
       } else { # finally, if a numeric value is given use it as the taxa ID to fetch uniprot data; TODO: this should still be validated so that the user cannot submit alphanumeric values etc.
         # call uniprot_validate_fields() to check the columns the user is about to call; show feedback if they're invalid
         # validation here is buggy; check the utils function, likely a problem with the way input$uniprot_columns is unlisted and checked
-        if(uniprot_validate_fields(input$uniprot_columns)){
+        if (uniprot_validate_fields(input$uniprot_columns)) {
           hideFeedback("taxID")
           hideFeedback("uniprot_columns")
           data$uniprot_data <- uniprot_fetch(data$groupcomp_data, input$taxID, input$uniprot_columns)
-        }
-        else {
+        } else {
           showFeedbackWarning("uniprot_columns", "Wrong UniProt fields")
         }
       }
     }) %>% bindEvent(input$uniprottable)
-    
-    output$groupcomp_table <- renderDT({df <- datatable(
+
+    output$groupcomp_table <- renderDT({
+      df <- datatable(
         data$groupcomp_data,
         rownames = FALSE,
         options = list(
@@ -226,7 +224,7 @@ dataprocess_server <- function(id, data) {
         )
       )
     })
-    
+
     output$uniprot_table <- renderDT({
       # datatable modification from https://stackoverflow.com/a/66037552
       # shortens cells with characters > 30 and enables tooltip to view the cell data
@@ -248,8 +246,8 @@ dataprocess_server <- function(id, data) {
           ))
         )
       )
-      })
-    
+    })
+
     output$uniprot_species <- renderDT({
       # datatable modification from https://stackoverflow.com/a/66037552
       # shortens cells with characters > 30 and enables tooltip to view the cell data
@@ -272,39 +270,36 @@ dataprocess_server <- function(id, data) {
         )
       )
     })
-    
-    selected_tab <- reactive({input$dataprocess_tabs})
-   
+
+    selected_tab <- reactive({
+      input$dataprocess_tabs
+    })
+
     output$data_download <- downloadHandler(
       filename = function() {
-        if(selected_tab() == "Group comparisons") {
-          file_name <- paste0('group_comp-data-', Sys.Date(), '.csv', sep="")
-        }
-        else if(selected_tab() == "UniProt data") {
-          file_name <- paste0('uniprot-data-', Sys.Date(), '.csv', sep="")
-        }
-        else if(selected_tab() == "UniProt taxa IDs") {
-          file_name <- paste0('uniprot-taxIDs-', Sys.Date(), '.csv', sep="")
+        if (selected_tab() == "Group comparisons") {
+          file_name <- paste0("group_comp-data-", Sys.Date(), ".csv", sep = "")
+        } else if (selected_tab() == "UniProt data") {
+          file_name <- paste0("uniprot-data-", Sys.Date(), ".csv", sep = "")
+        } else if (selected_tab() == "UniProt taxa IDs") {
+          file_name <- paste0("uniprot-taxIDs-", Sys.Date(), ".csv", sep = "")
         }
         return(file_name)
       },
       content = function(file) {
-        
         get_data <- function() {
-          if(selected_tab() == "Group comparisons") {
+          if (selected_tab() == "Group comparisons") {
             data <- data$groupcomp_data
-          }
-          else if(selected_tab() == "UniProt data") {
+          } else if (selected_tab() == "UniProt data") {
             data <- data$uniprot_data
-          }
-          else if(selected_tab() == "UniProt taxa IDs") {
+          } else if (selected_tab() == "UniProt taxa IDs") {
             data <- data$uniprot_species
           }
           return(data)
         }
-        
-        write.csv(get_data(), file, row.names = FALSE)}
+
+        write.csv(get_data(), file, row.names = FALSE)
+      }
     )
-    
   })
 }

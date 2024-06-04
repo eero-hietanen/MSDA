@@ -8,8 +8,7 @@
 
 # TODO: Fix this to handle MaxQuant input. Requires additional protein_groups input file.
 data_preprocessing <- function(evidence, annotation, source_type) {
-  
-  req(list=c(evidence, annotation, source_type))
+  req(list = c(evidence, annotation, source_type))
   show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
 
   evidence <- vroom(evidence$datapath)
@@ -17,12 +16,12 @@ data_preprocessing <- function(evidence, annotation, source_type) {
 
   if (source_type == "FragPipe") {
     dataOut <- PhilosophertoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
-  } else if(source_type == "ProteomeDiscoverer") {
+  } else if (source_type == "ProteomeDiscoverer") {
     dataOut <- PDtoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
   }
-  
+
   remove_modal_spinner()
-  
+
   dataOut
 }
 
@@ -35,49 +34,50 @@ data_preprocessing <- function(evidence, annotation, source_type) {
 # Returns a group comparison data frame.
 
 data_groupcomparisons <- function(input, ...) {
-  
   show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
-  
+
   args <- unlist(list(...))
-  
+
   # Check if the proteinSummarization option 'maxQuantilieforCensored' does anything with the NA data filtering
   quant.msstats <- proteinSummarization(input,
-                                        method = args[["summ_method"]],
-                                        global_norm = as.logical(args[["summ_peptide_norm"]]),
-                                        reference_norm =  as.logical(args[["summ_protein_norm"]]),
-                                        remove_norm_channel = as.logical(args[["summ_remove_norm"]]),
-                                        remove_empty_channel = as.logical(args[["summ_remove_empty"]]),
-                                        maxQuantileforCensored = as.numeric(args[["summ_maxquantilecensor"]]),
-                                        use_log_file = FALSE)
-  
+    method = args[["summ_method"]],
+    global_norm = as.logical(args[["summ_peptide_norm"]]),
+    reference_norm = as.logical(args[["summ_protein_norm"]]),
+    remove_norm_channel = as.logical(args[["summ_remove_norm"]]),
+    remove_empty_channel = as.logical(args[["summ_remove_empty"]]),
+    maxQuantileforCensored = as.numeric(args[["summ_maxquantilecensor"]]),
+    use_log_file = FALSE
+  )
+
   test.pairwise <- groupComparisonTMT(quant.msstats,
-                                      moderated = as.logical(args[["group_modttest"]]),
-                                      use_log_file = FALSE)
-  
+    moderated = as.logical(args[["group_modttest"]]),
+    use_log_file = FALSE
+  )
+
   remove_modal_spinner()
-  
+
   test.pairwise$ComparisonResult
 }
 
 # #####################################
 # # ----- Volcano plot (manual) ----- #
 # #####################################
-# 
+#
 # # Volcano plot through ggplot2. Requires comparisonResult from group comparisons
 # # Default cutoff = 0.05.
 # # TODO: Check plotting through groupComparisonPlots()
-# 
+#
 # plotting_volcano <- function(input, ...) {
-#   
+#
 #   args <- unlist(list(...))
-#   
+#
 #   #set up a df for the plotting values
 #   plotdf <- input
 #   #add a categorical column for up/down regulated genes; default value "NS"
 #   plotdf$diffexp <- "NS"
 #   # Changed the log2FC vals from 0.5 to 0.6, also for xintercept below (geom_vline()); change back if wrong; check standard log2FC cutoff
 #   plotdf$diffexp[plotdf$log2FC > as.numeric(args[["plot_fccutoff"]]) & plotdf$adj.pvalue < as.numeric(args[["plot_pcutoff"]])] <- "Up-regulated"
-#   # as.numeric is done for the negative value because otherwise the plotting function breaks 
+#   # as.numeric is done for the negative value because otherwise the plotting function breaks
 #   plotdf$diffexp[plotdf$log2FC < -as.numeric(args[["plot_fccutoff"]]) & plotdf$adj.pvalue < as.numeric(args[["plot_pcutoff"]])] <- "Down-regulated"
 #   #set up base plot; note to log-transform p-value
 #   p <- ggplot(plotdf, aes(x=log2FC, y=-log10(adj.pvalue), col=factor(diffexp), text = plotdf$Protein)) + geom_point()
@@ -86,11 +86,11 @@ data_groupcomparisons <- function(input, ...) {
 #   p <- p + labs(x = "log2FC", y = "adjusted p.value", title = args[["plot_title"]], color = "")
 #   #adjust colour mapping
 #   # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
-#   
+#
 #   #names for DE genes can be toggled by adding another column to the 'plotdf' and
 #   #copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
 #   #check 'ggrepel' library and the geom_text_repel() function for label placement
-#   
+#
 #   # Return a list with the plot p and the plotdf. Use plotdf as the data table and enable download signif. proteins through it.
 #   return(list(p = p, plotdf = plotdf))
 #   # p
@@ -102,22 +102,22 @@ data_groupcomparisons <- function(input, ...) {
 #####################################
 
 plotting_volcano <- function(input, ...) {
-  
   args <- unlist(list(...))
-  
-  #set up base plot; note to log-transform p-value
-  p <- ggplot(input, aes(x=log2FC, y=-log10(adj.pvalue), col=factor(diffexp), text = input$Protein)) + geom_point()
-  #add plot labels
+
+  # set up base plot; note to log-transform p-value
+  p <- ggplot(input, aes(x = log2FC, y = -log10(adj.pvalue), col = factor(diffexp), text = input$Protein)) +
+    geom_point()
+  # add plot labels
   p <- p + labs(x = "log2FC", y = "adj. p-value", title = args[["plot_title"]], color = "")
-  #add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
-  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col="#960000", linetype = "dash", linewidth = 0.3) + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col="#960000", linetype = "dash", linewidth = 0.3)
-  #adjust colour mapping
+  # add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
+  p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col = "#960000", linetype = "dash", linewidth = 0.3) + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col = "#960000", linetype = "dash", linewidth = 0.3)
+  # adjust colour mapping
   # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
-  
-  #names for DE genes can be toggled by adding another column to the 'plotdf' and
-  #copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
-  #check 'ggrepel' library and the geom_text_repel() function for label placement
-  
+
+  # names for DE genes can be toggled by adding another column to the 'plotdf' and
+  # copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
+  # check 'ggrepel' library and the geom_text_repel() function for label placement
+
   # Return a list with the plot p and the plotdf. Use plotdf as the data table and enable download signif. proteins through it.
   return(list(p = p, plotdf = input)) # Can just return p here
   # p
@@ -133,22 +133,22 @@ plotting_volcano <- function(input, ...) {
 # as it has more available data, such as gene names that can act as better labels for DE genes.
 
 uniprot_fetch <- function(input, taxID, fields) {
-  
   # function to fetch UniProt data and construct a final results table similar to what's
   # in the original script file.
   # requires 'taxID' and 'dataCols' as inputs to determine which organism to fetch the data for
   # what which UniProt fields should be fetched for the final table.
-  
+
   show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
-  
+
   # cat("Fetching with: ", taxID) # Test message to R console
-  
+
   # filter out the rows with found issues from group comparisons
   comparison_result <- filter(input, is.na(input$issue))
 
   accession_list <- unique(as.vector(str_extract_all(comparison_result$Protein,
-                                                    "[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}",
-                                                    simplify = TRUE)))
+    "[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}",
+    simplify = TRUE
+  )))
 
   # Build UniProt.ws object with species database, query Uniprot and fetch
   # GO terms and protein descriptions for each accession. Full list of UniProtKB
@@ -157,15 +157,14 @@ uniprot_fetch <- function(input, taxID, fields) {
 
   taxDB <- UniProt.ws(taxID)
   # Split fields character string by whitespace and unlist the result to retrieve a vector
-  uniprot_result <- UniProt.ws::select(x = taxDB, keys=accession_list, columns=unlist(strsplit(fields, " ")))
+  uniprot_result <- UniProt.ws::select(x = taxDB, keys = accession_list, columns = unlist(strsplit(fields, " ")))
 
   # Merge UniProt results with existing comparison results.
 
   merged_result <- NULL
 
-  for(row in 1:nrow(uniprot_result)) {
-
-    output <- cbind(comparison_result[grepl(uniprot_result[row,1], comparison_result$Protein)], uniprot_result[row,])
+  for (row in 1:nrow(uniprot_result)) {
+    output <- cbind(comparison_result[grepl(uniprot_result[row, 1], comparison_result$Protein)], uniprot_result[row, ])
 
     merged_result <- rbind(merged_result, output, fill = TRUE)
   }
@@ -175,10 +174,10 @@ uniprot_fetch <- function(input, taxID, fields) {
   # Done with dplyr if_else() as the base package ifelse had a renaming issue.
 
   merged_result$Protein <- if_else(is.na(merged_result$Entry), merged_result$Protein, merged_result$Entry, merged_result$Protein)
-  merged_result <- subset(merged_result, select = -c(From,Entry, issue))
-  
+  merged_result <- subset(merged_result, select = -c(From, Entry, issue))
+
   remove_modal_spinner()
-  
+
   merged_result
 }
 
@@ -187,9 +186,8 @@ uniprot_fetch <- function(input, taxID, fields) {
 ####################################
 
 uniprot_fetch_species <- function(input) {
-  
   speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = input)
-  
+
   speciesTable
 }
 
@@ -198,18 +196,17 @@ uniprot_fetch_species <- function(input) {
 #######################################
 
 uniprot_validate_fields <- function(input) {
-  
   fields <- UniProt.ws::returnFields()
   cols <- unlist(strsplit(input, " "))
   fields_ok <- TRUE
-  
+
   for (col in cols) {
     if (!(col %in% fields[["name"]])) {
       fields_ok <- FALSE
       break
     }
   }
-  
+
   fields_ok
 }
 
@@ -221,16 +218,18 @@ uniprot_validate_fields <- function(input) {
 ######################################################
 
 string_api_call <- function(input) {
-  
   # Concatenates the identifiers. Carriage return, \r, is used as a delimiter for the func. enrichment API call.
   string_conv <- function(input) {
-    paste0(input, collapse='\r')
+    paste0(input, collapse = "\r")
   }
-  
+
   req <- request("https://string-db.org/api")
-  resp <- req |> req_url_path_append("tsv/enrichment") |> req_url_query(identifiers=string_conv(input)) |> req_perform()
+  resp <- req |>
+    req_url_path_append("tsv/enrichment") |>
+    req_url_query(identifiers = string_conv(input)) |>
+    req_perform()
   resp_body_tsv <- resp |> resp_body_string()
-  resp_body_tsv_parsed <- vroom(I(resp_body_tsv), delim="\t")
-  
+  resp_body_tsv_parsed <- vroom(I(resp_body_tsv), delim = "\t")
+
   resp_body_tsv_parsed
 }
