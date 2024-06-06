@@ -109,6 +109,8 @@ plotting_server <- function(id, data) {
     # This function should likely be split into two. One should generate the initial plot and the second one should handle
     # updating the graphed elements, e.g. p-val cutoff line, while using the previously generated plot data. This way the
     # whole plot data doesn't have to be re-generated each time the plot is updated.
+    # TODO: There should be two separate observers, or split logic, so that the gneetate_plot() function is not called each time
+    # the user adjusts things like p-val. cutoff. Instead, already existing plot data, with only updated values should be used.
     observe({
       req(!is.null(data$groupcomp_data))
       generate_plot()
@@ -138,7 +140,11 @@ plotting_server <- function(id, data) {
     # FIXME: Changed to a single "real-time" output for the plot and table. However, it's somewhat fucked.
     #        Check the slider input and how the values are read / interpreted for the plot as they seem to bounce around.
     generate_plot <- function() {
-      prep_data(data$groupcomp_data)
+      if (data$use_uniprot) {
+        prep_data(data$uniprot_data)
+      } else {
+        prep_data(data$groupcomp_data)
+      }
       # When additional args are passed in this way, the varargs have to be unlisted in the plotting_volcano()
       # after which the varargs can be accessed by, e.g., args[["plot_title"]].
       # Another option is to use do.call(plotting_volcano, c(list(data$groupcomp_data, additional_args))) which would

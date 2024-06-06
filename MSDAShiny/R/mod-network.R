@@ -70,6 +70,8 @@ network_ui <- function(id) {
       card_header("Settings"),
       card_body(
         # STRINGdb seems to reliably recognize searches by gene names ('gene_primary' UniProt field)
+        # Parsing of these entries should be done in the same manner as the identifiers given for
+        # UniProt fields, i.e. whitespace separated.
         textInput(ns("gene_user"), label = "Genes", placeholder = "e.g.: TP53 MDM4"),
         numericInput(ns("node_count"), label = "Nodes", value = 10),
         sliderInput(ns("interaction_significance"), label = "Interaction threshold", min = 0, max = 1000, value = 0, step = 5),

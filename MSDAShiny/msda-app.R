@@ -1,8 +1,3 @@
-# TODO: Modify UniProt table to have: UniProt ID, species by default (others?)
-# TODO: Look into 'httr2' package for R (similar to 'Requests' in Python) for handling HTTP communication.
-#       Could you just query STRINGdb API with httr2 and build the network 'manually' using an external network graphing library?
-#       Also, if using the embedded network is easier, could you still query with httr2 to get/receive clustering information for the submitted gene list?
-#       If you want to do any selection from the network graph, you'd likely need to plot it with some other library.
 # TODO: Check if the currently used MSstats functions can be changed to the more base level ones (access with MSstats:::), so hopefully log file generation can be turned off properly.
 # TODO: Implement an enrichment analysis option like in ProteomeDiscoverer: i.e., perform GO term enrichment analysis on a selected set of genes
 # FIXME: Probably just merge Plotting and Network modules to simplify the shared data handling
@@ -33,6 +28,7 @@ library(STRINGdb)
 library(igraph)
 library(vroom)
 library(httr2)
+# library(InteractiveComplexHeatmap) # Implement this for the GO enrichment analysis visualization.
 
 options(shiny.maxRequestSize = 40 * 1024^2)
 # options(shiny.error = NULL)

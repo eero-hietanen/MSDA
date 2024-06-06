@@ -122,6 +122,12 @@ dataprocess_ui <- function(id) {
                 bs_icon("info-circle")
               ), "UniProt fields to add to the result table. Separated by a space, e.g. 'go xref_pdb protein_name'. Check 'UniProt help' link for a full list of fields."
             ), ),
+            checkboxInput(inputId = ns("use_uniprot"), label = tooltip(
+              trigger = list(
+                "Use UniProt table in next steps",
+                bs_icon("info-circle")
+              ), "Use the table generated after fetching UniProt data in further analysis steps. Helpful if you want to include certain data from UniProt in the final table to be exported."
+            ), value = FALSE),
             actionButton(
               inputId = ns("uniprottable"),
               label = "Fetch UniProt data",
@@ -203,6 +209,15 @@ dataprocess_server <- function(id, data) {
         }
       }
     }) %>% bindEvent(input$uniprottable)
+
+    # Check whether the user wants to use the UniProt table for subsequent steps.
+    observe({
+      if (input$use_uniprot) {
+        data$use_uniprot <- TRUE
+      } else {
+        data$use_uniprot <- FALSE
+      }
+    }) %>% bindEvent(input$use_uniprot)
 
     output$groupcomp_table <- renderDT({
       df <- datatable(
