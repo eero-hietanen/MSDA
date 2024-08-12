@@ -168,6 +168,12 @@ plotting_server <- function(id, data) {
       data$t <- shared_data
     }
 
+    # Selected rows to be passed to the network module
+    data$selected_rows <- reactive({
+      req(data$t)
+      data$t$selection()
+    })
+
     # Crosstalk plot_table output
     # New table is generated alongside a new plot when the plotting button is pressed.
     # However, if navigating back, the table doesn't change based on selected plot.

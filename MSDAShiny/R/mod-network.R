@@ -141,6 +141,9 @@ network_server <- function(id, data) {
     # rv <- data
     # data$gene_user <- NULL
 
+    # Reactive to update selected rows from the plotting DT.
+    selected_rows <- reactive(data$selected_rows())
+
     # Network selected rows together with the user input genes.
     observe({
       gene_list <- fetch_selected_genes()
@@ -196,7 +199,20 @@ network_server <- function(id, data) {
     # If calling for the RV inside the datatable() func, then it works without
     output$network_table <- renderDT(
       {
-        datatable(data$t,
+
+      req(!is.null(data$t))
+
+      # Get the underlying data from the SharedData object
+      full_data <- isolate(data$t$data())
+
+      # Filter the data if there are selected rows
+      if (!is.null(selected_rows()) && length(selected_rows()) > 0) {
+        filtered_data <- full_data[selected_rows(), ]
+      } else {
+        filtered_data <- full_data
+      }
+
+        datatable(filtered_data,
           rownames = FALSE,
           options = list(
             scrollX = TRUE,
