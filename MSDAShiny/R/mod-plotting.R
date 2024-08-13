@@ -72,7 +72,7 @@ plotting_ui <- function(id) {
           ),
         ),
         tags$hr(),
-        actionButton(ns("update_plot"),
+        actionButton(ns("generate_plot"),
           "Update plot",
           width = "100%"
         ),
@@ -113,9 +113,8 @@ plotting_server <- function(id, data) {
     # the user adjusts things like p-val. cutoff. Instead, already existing plot data, with only updated values should be used.
     observe({
       req(!is.null(data$groupcomp_data))
-      generate_plot()
       shinyjs::show("data_download")
-    }) %>% bindEvent(input$update_plot)
+    }) %>% bindEvent(input$generate_plot)
 
     # FIXME: The problem with the table updating with Crosstalk might be due to the way data$prepped_data is used
     # If the shared data object refers back to prepped_data, then that'll always be the latest one
@@ -161,9 +160,11 @@ plotting_server <- function(id, data) {
       # 'group' is the parameter that acts as an identifier between the linked object groups, not 'key'
       # FIXME: A problem persists where the DT render output doesn't update to the correct data table (evident by 'diffexp' column values)
       shared_data <- SharedData$new(reactive(data$prepped_data))
+      data$shared_data <- shared_data
 
       plot_data <- plotting_volcano(shared_data, additional_args) # test plotting function used with Crosstalk
 
+      # data$p <- plot_data[["p"]]
       data$p <- plot_data[["p"]]
       data$t <- shared_data
     }
@@ -208,12 +209,14 @@ plotting_server <- function(id, data) {
         )
       },
       server = FALSE
-    ) # app struggles with large tables with client-side processing, but is required for Crosstalk to work
+    ) # App struggles with large tables with client-side processing, but is required for Crosstalk to work
 
     output$plot_output <- renderPlotly({
-      # req(!is.null(plots))
-      # req(!is.null(input$plot_select) && input$plot_select != "")
-      req(!is.null(data$p))
+      req(input$generate_plot)
+      req(!is.null(data$groupcomp_data))
+
+      # Generate plot called here to enable real time replotting upon FC/p-val changes.
+      generate_plot()
 
       ggplotly(data$p) %>%
         highlight(on = "plotly_selected", off = "plotly_deselect") %>%

@@ -103,6 +103,7 @@ network_ui <- function(id) {
         ),
         # actionButton(ns("network_selected"), label = "Network selected rows"),
         actionButton(ns("test_button"), label = "Test enrichment"),
+        actionButton(ns("clear_selection"), label = "Clear selection"),
         # downloadButton(ns("data_download"), "Download table"),
       )
     ),
@@ -173,6 +174,11 @@ network_server <- function(id, data) {
       data$enrichment <- string_api_call(genes)
     }) %>% bindEvent(input$test_button)
 
+    # Clear selection button observe event. Used to clear the selected_rows to null.
+    observe({
+      data$selected_rows <- c("")
+    }) %>% bindEvent(input$clear_selection)
+
     # Observes the add_nodes button and increases the network nodes when clicked.
     observe({
       data$node_count <- data$node_count + 5
@@ -197,8 +203,7 @@ network_server <- function(id, data) {
 
     # Assigning a reactive value to a variable needs the RV to be evaluated with()
     # If calling for the RV inside the datatable() func, then it works without
-    output$network_table <- renderDT(
-      {
+    output$network_table <- renderDT({
 
       req(!is.null(data$t))
 
@@ -212,50 +217,49 @@ network_server <- function(id, data) {
         filtered_data <- full_data
       }
 
-        datatable(filtered_data,
-          rownames = FALSE,
-          options = list(
-            scrollX = TRUE,
-            searching = TRUE,
-            pageLength = 25,
-            columnDefs = list(list(
-              targets = "_all",
-              render = JS(
-                "function(data, type, row, meta) {",
-                "return type === 'display' && data != null && data.length > 30 ?",
-                "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
-                "}"
-              )
-            ))
-          )
+      datatable(filtered_data,
+        rownames = FALSE,
+        options = list(
+          scrollX = TRUE,
+          searching = TRUE,
+          pageLength = 25,
+          columnDefs = list(list(
+            targets = "_all",
+            render = JS(
+              "function(data, type, row, meta) {",
+              "return type === 'display' && data != null && data.length > 30 ?",
+              "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
+              "}"
+            )
+          ))
         )
-      },
-      server = FALSE
+      )
+    },
+    server = FALSE
     )
 
     # Functional enrichment table output. Should return a parsed version of the STRING API call using httr2.
     # Currently could only be made to work with the user input. Table selection has a problem with reacing the actual protein names.
-    output$enrichment_table <- renderDT(
-      {
-        datatable(data$enrichment,
-          rownames = FALSE,
-          options = list(
-            scrollX = TRUE,
-            searching = TRUE,
-            pageLength = 25,
-            columnDefs = list(list(
-              targets = "_all",
-              render = JS(
-                "function(data, type, row, meta) {",
-                "return type === 'display' && data != null && data.length > 30 ?",
-                "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
-                "}"
-              )
-            ))
-          )
+    output$enrichment_table <- renderDT({
+      datatable(data$enrichment,
+        rownames = FALSE,
+        options = list(
+          scrollX = TRUE,
+          searching = TRUE,
+          pageLength = 25,
+          columnDefs = list(list(
+            targets = "_all",
+            render = JS(
+              "function(data, type, row, meta) {",
+              "return type === 'display' && data != null && data.length > 30 ?",
+              "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
+              "}"
+            )
+          ))
         )
-      },
-      server = FALSE
+      )
+    },
+    server = FALSE
     )
 
     # Fethces the selected genes from the table based on the selection.
