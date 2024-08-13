@@ -223,6 +223,7 @@ dataprocess_server <- function(id, data) {
       df <- datatable(
         data$groupcomp_data,
         rownames = FALSE,
+        filter = "top",
         options = list(
           scrollX = TRUE,
           searching = TRUE,
@@ -246,6 +247,7 @@ dataprocess_server <- function(id, data) {
       df <- datatable(
         data$uniprot_data,
         rownames = FALSE,
+        filter = "top",
         options = list(
           scrollX = TRUE,
           searching = TRUE,
@@ -269,6 +271,7 @@ dataprocess_server <- function(id, data) {
       df <- datatable(
         data$uniprot_species,
         rownames = FALSE,
+        filter = "top",
         options = list(
           scrollX = TRUE,
           searching = TRUE,

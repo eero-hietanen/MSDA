@@ -78,6 +78,7 @@ dataupload_server <- function(id, data) {
     output$preprocessed_table <- renderDT({
       datatable(data$preprocessed_data,
         rownames = FALSE,
+        filter = "top",
         options = list(
           scrollX = TRUE,
           searching = TRUE,

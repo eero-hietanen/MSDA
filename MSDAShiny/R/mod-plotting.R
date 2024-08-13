@@ -192,6 +192,7 @@ plotting_server <- function(id, data) {
         datatable(
           plot_table,
           rownames = FALSE,
+          filter = "top",
           options = list(
             scrollX = TRUE,
             searching = TRUE,

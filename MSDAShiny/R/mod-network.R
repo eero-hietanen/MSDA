@@ -219,6 +219,7 @@ network_server <- function(id, data) {
 
       datatable(filtered_data,
         rownames = FALSE,
+        filter = "top",
         options = list(
           scrollX = TRUE,
           searching = TRUE,
@@ -243,6 +244,7 @@ network_server <- function(id, data) {
     output$enrichment_table <- renderDT({
       datatable(data$enrichment,
         rownames = FALSE,
+        filter = "top",
         options = list(
           scrollX = TRUE,
           searching = TRUE,
