@@ -133,17 +133,22 @@ plotting_volcano <- function(input, ...) {
 # as it has more available data, such as gene names that can act as better labels for DE genes.
 
 uniprot_fetch <- function(input, taxID, fields) {
-  # function to fetch UniProt data and construct a final results table similar to what's
+  # Function to fetch UniProt data and construct a final results table similar to what's
   # in the original script file.
-  # requires 'taxID' and 'dataCols' as inputs to determine which organism to fetch the data for
-  # what which UniProt fields should be fetched for the final table.
+  # Requires 'taxID' and 'dataCols' as inputs to determine which organism to fetch the data for
+  # and which UniProt fields should be fetched for the final table.
 
   show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
 
-  # cat("Fetching with: ", taxID) # Test message to R console
+  # Cat("Fetching with: ", taxID) # Test message to R console
 
-  # filter out the rows with found issues from group comparisons
+  # Filter out the rows with found issues from group comparisons
   comparison_result <- filter(input, is.na(input$issue))
+
+  # Drop the "issue" column as the rows have now been filtered out.
+  # Using base R as it could be more efficient with large tables.
+  # NOTE: There might be an argument for keeping the issue column in this table.
+  # comparison_result$issue <- NULL
 
   accession_list <- unique(as.vector(str_extract_all(comparison_result$Protein,
     "[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}",
@@ -160,21 +165,39 @@ uniprot_fetch <- function(input, taxID, fields) {
   uniprot_result <- UniProt.ws::select(x = taxDB, keys = accession_list, columns = unlist(strsplit(fields, " ")))
 
   # Merge UniProt results with existing comparison results.
-
   merged_result <- NULL
 
-  for (row in 1:nrow(uniprot_result)) {
-    output <- cbind(comparison_result[grepl(uniprot_result[row, 1], comparison_result$Protein)], uniprot_result[row, ])
+  # Original method for merging tables and building the UniProt results table.
+  # Has a problem where user specified proteins are not kept in the table.
 
-    merged_result <- rbind(merged_result, output, fill = TRUE)
-  }
+  # for (row in 1:nrow(uniprot_result)) {
+  #   output <- cbind(comparison_result[grepl(uniprot_result[row, 1], comparison_result$Protein)], uniprot_result[row, ])
+
+  #   merged_result <- rbind(merged_result, output, fill = TRUE)
+  # }
 
   # Rename 'Protein' column based on 'Entry' column and remove the redundant
-  # 'Entry', 'From', and 'Issue' columns.
+  # 'Entry', 'From', 'DF', and 'Issue' columns.
   # Done with dplyr if_else() as the base package ifelse had a renaming issue.
 
-  merged_result$Protein <- if_else(is.na(merged_result$Entry), merged_result$Protein, merged_result$Entry, merged_result$Protein)
-  merged_result <- subset(merged_result, select = -c(From, Entry, issue))
+  # merged_result$Protein <- if_else(is.na(merged_result$Entry), merged_result$Protein, merged_result$Entry, merged_result$Protein)
+  # merged_result <- subset(merged_result, select = -c(From, Entry, issue, DF))
+
+  # Modified table merging method using dlpyr. Should be more robust
+
+  # Simplify the Protein column in comparison_result, but keep the original for later use in step 2.
+  comparison_result <- comparison_result %>%
+    mutate(Original_Protein = Protein,
+           Simplified_Protein = str_extract(Protein, "(?<=\\|)[^|]+(?=\\|)")) # Extracts the IDs from between the pipe symbols.
+
+  # Merge the tables
+  merged_result <- comparison_result %>%
+    # Keep all entries from comparison_result. Drop "From" column from uniprot_result. Merge data by matching the simplified protein IDs with the entry IDs.
+    left_join(select(uniprot_result, -From), by = c("Simplified_Protein" = "Entry")) %>%
+    # Use coalesce to build the final Protein ID column. Uses Simplified_Protein ID if a match was found in the uniprot_results (non-NA column value), otherwise uses Original_Protein ID.
+    mutate(Protein = coalesce(Simplified_Protein, Original_Protein)) %>%
+    # Drop columns that are not needed for the final table.
+    select(-Original_Protein, -Simplified_Protein, -DF, -issue)
 
   remove_modal_spinner()
 

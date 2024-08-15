@@ -114,7 +114,7 @@ dataprocess_ui <- function(id) {
               trigger = list(
                 "Taxonomic ID or species name",
                 bs_icon("info-circle")
-              ), "UniProt taxa ID (numeric) or a species name to perform a search for taxa IDs (name can be partial). Note that Genus names are capitalizied while species names are not."
+              ), "UniProt taxa ID (numeric) or a species name to perform a search for taxa IDs (name can be partial). Note that genus names are capitalizied while species names are not."
             ), ),
             textInput(inputId = ns("uniprot_columns"), label = tooltip(
               trigger = list(
@@ -124,9 +124,9 @@ dataprocess_ui <- function(id) {
             ), ),
             checkboxInput(inputId = ns("use_uniprot"), label = tooltip(
               trigger = list(
-                "Use UniProt table in next steps",
+                "Use UniProt table",
                 bs_icon("info-circle")
-              ), "Use the table generated after fetching UniProt data in further analysis steps. Helpful if you want to include certain data from UniProt in the final table to be exported."
+              ), "Use the table generated after fetching UniProt data in any further analysis steps. Helpful if you want to include additional UniProt fields in the result table."
             ), value = FALSE),
             actionButton(
               inputId = ns("uniprottable"),
@@ -187,8 +187,21 @@ dataprocess_server <- function(id, data) {
       shinyjs::show("data_download")
     }) %>% bindEvent(input$groupcomparisons)
 
+    # Store the taxonomic ID for use later in the network module.
     observe({
-      # call util func to fetch uniprot data and construct table; returns the table
+      req(input$taxID)
+      data$taxID <- input$taxID
+    })
+
+    # Observer for the UniProt search and subsequent table use.
+    # If the UniProt search is done and the data is found, the the table will be set to be used in the next steps.
+    observe({
+      req(data$uniprot_data)
+      updateCheckboxInput(session, "use_uniprot", value = TRUE)
+    })
+
+    observe({
+      # Call util func to fetch uniprot data and construct table; returns the table
       req(data$groupcomp_data) # this could be changed to validate() to check if groupcomp_data is NULL or not
 
       if (input$taxID == "") { # throw a warning if nothing is submitted

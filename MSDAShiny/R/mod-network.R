@@ -72,12 +72,23 @@ network_ui <- function(id) {
         # STRINGdb seems to reliably recognize searches by gene names ('gene_primary' UniProt field)
         # Parsing of these entries should be done in the same manner as the identifiers given for
         # UniProt fields, i.e. whitespace separated.
-        textInput(ns("gene_user"), label = "Genes", placeholder = "e.g.: TP53 MDM4"),
-        numericInput(ns("node_count"), label = "Nodes", value = 10),
+        textInput(ns("gene_user"), placehold = "e.g. TP53 MDM4", label = tooltip(
+          trigger = list(
+            "Additional query IDs",
+            bs_icon("info-circle")
+          ), "Protein/gene IDs to query STRINGdb with. IDs entered here can be queried separately if there is no selection made on the data table."
+        ), ),
+        numericInput(ns("node_count"), value = 10, label = tooltip(
+          trigger = list(
+            "Network node count",
+            bs_icon("info-circle")
+          ), "Sets the network node count if querying with a single protein. If the query consists of multiple proteins, only connections between queried proteins are shown."
+        ), ),
         sliderInput(ns("interaction_significance"), label = "Interaction threshold", min = 0, max = 1000, value = 0, step = 5),
         selectInput(ns("network_type"), label = "Network type", choices = list("Functional" = "functional", "Physical" = "physical"), selected = "Functional"),
         selectInput(ns("network_flavor"), label = "Network flavor", choices = list("Evidence" = "evidence", "Condifence" = "confidence", "Actions" = "actions"), selected = "Evidence"),
-        numericInput(ns("species_id"), label = "Species taxa ID", value = "9606"),
+        # numericInput(ns("species_id"), label = "Taxonomic ID", value = "9606"),
+        textInput(ns("species_id"), label = "Taxonomic ID", placeholder = "e.g. 9606"),
         checkboxInput(ns("query_labels"), label = tooltip(
           trigger = list(
             "Use query labels as names",
@@ -103,8 +114,8 @@ network_ui <- function(id) {
         ),
         # actionButton(ns("network_selected"), label = "Network selected rows"),
         actionButton(ns("test_button"), label = "Test enrichment"),
-        actionButton(ns("clear_selection"), label = "Clear selection"),
-        # downloadButton(ns("data_download"), "Download table"),
+        # actionButton(ns("clear_selection"), label = "Clear selection"), # NYI
+        # downloadButton(ns("data_download"), "Download table"), # NYI
       )
     ),
     grid_card(
@@ -155,13 +166,23 @@ network_server <- function(id, data) {
       data$interaction_significance <- input$interaction_significance
       data$network_type <- input$network_type
       data$network_flavor <- input$network_flavor
-      data$species_id <- input$species_id
+
+
+
+      data$species_id <- as.integer(input$species_id) # Convert from text input.
       data$query_labels <- as.integer(input$query_labels)
 
       additional_args <- build_args()
       data$verbtext <- additional_args
       session$sendCustomMessage("string_network_fetch", additional_args)
     }) %>% bindEvent(input$update_network)
+
+    # Update the taxonomic ID if it's already been submitted in the data processing module.
+    observe({
+      req(data$taxID)
+
+      updateTextInput(session, "species_id", value = data$taxID)
+    })
 
     # Test button observe event. Use for testing enrichment.
     observe({
@@ -174,10 +195,10 @@ network_server <- function(id, data) {
       data$enrichment <- string_api_call(genes)
     }) %>% bindEvent(input$test_button)
 
-    # Clear selection button observe event. Used to clear the selected_rows to null.
-    observe({
-      data$selected_rows <- c("")
-    }) %>% bindEvent(input$clear_selection)
+    # NYI: Clear selection button observe event. Used to clear the selected_rows to null.
+    # observe({
+    #   data$selected_rows <- c("")
+    # }) %>% bindEvent(input$clear_selection)
 
     # Observes the add_nodes button and increases the network nodes when clicked.
     observe({
@@ -200,6 +221,24 @@ network_server <- function(id, data) {
       req(!is.null(data$verbtext))
       data$verbtext
     })
+
+    ### Test for setting column filters as the selection for Crosstalk ->
+    # Works, but also breaks the functionality of selecting rows yourself for analysis.
+    
+    # Observe filter changes and update Crosstalk selection
+    observeEvent(input$network_table_search_columns, {
+      req(input$network_table_search_columns)
+      proxy <- dataTableProxy("table")
+
+      # Get the indices of visible (filtered) rows
+      proxy %>% selectRows(NULL)  # Clear existing selection
+      proxy %>% selectRows(input$network_table_rows_all)
+
+      # Update Crosstalk selection
+      filtered_indices <- input$network_table_rows_all
+      data$t$selection(filtered_indices)
+    })
+    ### <- Test
 
     # Assigning a reactive value to a variable needs the RV to be evaluated with()
     # If calling for the RV inside the datatable() func, then it works without

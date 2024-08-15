@@ -41,13 +41,13 @@ plotting_ui <- function(id) {
       area = "plotting_side",
       card_header = "Settings",
       card_body(
-        accordion(
+        accordion(open = FALSE,
           # selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
           accordion_panel(
             "Help",
             tags$div(HTML("<h5>Volcano plot</h5>
-                      <p>Generate a volcano plot of based on the output from the data processing module.
-                      The plot is linked to the data table through Crosstalk.</p>
+                      <p>Generate a volcano plot based on the table from the data processing module.
+                      The plot is linked to the data table using Crosstalk.</p>
                       <p>Basic plot tool buttons are found on the top right of the plot.
                       Both the plot and the data table can be expanded to full screen from the bottom right.</p>
                       <p>Basic functionality includes:
@@ -66,14 +66,14 @@ plotting_ui <- function(id) {
             textInput(ns("plot_title"), label = "Title"),
             # Use numericInput here instead of sliderInput as the p-val cutoff might have to be lowered substantially
             numericInput(ns("plot_pcutoff"), label = "p-value cutoff", value = 0.05, step = 0.01),
-            numericInput(ns("plot_fccutoff"), label = "FC cutoff", value = 1.1, step = 0.1),
+            numericInput(ns("plot_fccutoff"), label = "FC cutoff", value = 2, step = 0.1),
             # sliderInput(ns("plot_pcutoff"), label = "p-value cutoff", min = 0, max = 1, value = 0.05),
             # sliderInput(ns("plot_fccutoff"), label = "FC cutoff", min = 0, max = 3, value = 1.1, step = 0.1),
           ),
         ),
         tags$hr(),
         actionButton(ns("generate_plot"),
-          "Update plot",
+          "Generate plot",
           width = "100%"
         ),
         shinyjs::hidden(downloadButton(ns("data_download"), "Download table")),
