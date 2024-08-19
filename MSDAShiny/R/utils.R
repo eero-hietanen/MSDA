@@ -233,6 +233,8 @@ uniprot_validate_fields <- function(input) {
   fields_ok
 }
 
+
+# TODO: Change this function to handle different API calls by modifying the req_url_path_append() function based an input value.
 ######################################################
 # ----- STRINGdb API calls: Enrichment analysis -----#
 # This can be modified to handle different api calls.#
@@ -240,15 +242,21 @@ uniprot_validate_fields <- function(input) {
 # call is performed.                                 #
 ######################################################
 
-string_api_call <- function(input) {
+string_api_call <- function(input, type_switch) {
   # Concatenates the identifiers. Carriage return, \r, is used as a delimiter for the func. enrichment API call.
   string_conv <- function(input) {
     paste0(input, collapse = "\r")
   }
 
+  if (type_switch == "enrichment") {
+    api_call_type <- "tsv/enrichment"
+  } else if (type_switch == "url") {
+    api_call_type <- "tsv/get_link"
+  }
+
   req <- request("https://string-db.org/api")
   resp <- req |>
-    req_url_path_append("tsv/enrichment") |>
+    req_url_path_append(api_call_type) |>
     req_url_query(identifiers = string_conv(input)) |>
     req_perform()
   resp_body_tsv <- resp |> resp_body_string()

@@ -112,6 +112,7 @@ network_ui <- function(id) {
           actionButton(ns("add_nodes"), label = "+5", width = "auto"),
           style = "display: flex; justify-content: space-around;"
         ),
+        uiOutput(ns("network_url")), # Network URL output
         # actionButton(ns("network_selected"), label = "Network selected rows"),
         actionButton(ns("test_button"), label = "Test enrichment"),
         # actionButton(ns("clear_selection"), label = "Clear selection"), # NYI
@@ -167,14 +168,17 @@ network_server <- function(id, data) {
       data$network_type <- input$network_type
       data$network_flavor <- input$network_flavor
 
-
-
       data$species_id <- as.integer(input$species_id) # Convert from text input.
       data$query_labels <- as.integer(input$query_labels)
 
       additional_args <- build_args()
       data$verbtext <- additional_args
       session$sendCustomMessage("string_network_fetch", additional_args)
+
+      # Fetch the network URL.
+      gene_user <- input$gene_user
+      data$network_url <- string_api_call(c(gene_list, gene_user), "url")
+
     }) %>% bindEvent(input$update_network)
 
     # Update the taxonomic ID if it's already been submitted in the data processing module.
@@ -192,7 +196,7 @@ network_server <- function(id, data) {
       cat("selected ", selected_genes, "\n")
       cat("user ", user_genes, "\n")
       cat("combined ", genes, "\n")
-      data$enrichment <- string_api_call(genes)
+      data$enrichment <- string_api_call(genes, "enrichment")
     }) %>% bindEvent(input$test_button)
 
     # NYI: Clear selection button observe event. Used to clear the selected_rows to null.
@@ -222,9 +226,23 @@ network_server <- function(id, data) {
       data$verbtext
     })
 
+    # FIXME: Throws an error. Problem with cat() and lists.
+    # Observer for the network URL and render.
+    output$network_url <- renderText({
+      req(!is.null(data$network_url))
+      network_url <- data$network_url
+      paste0(network_url)
+    })
+
+    output$network_url <- renderUI({
+      req(!is.null(data$network_url))
+      network_url <- data$network_url
+      a(href = network_url, target = "_blank", "Network URL")
+    })
+
     ### Test for setting column filters as the selection for Crosstalk ->
     # Works, but also breaks the functionality of selecting rows yourself for analysis.
-    
+
     # Observe filter changes and update Crosstalk selection
     observeEvent(input$network_table_search_columns, {
       req(input$network_table_search_columns)
