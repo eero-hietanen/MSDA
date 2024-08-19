@@ -159,32 +159,36 @@ network_server <- function(id, data) {
 
     # Network selected rows together with the user input genes.
     observe({
-      gene_list <- fetch_selected_genes()
+      if (input$species_id == "") { # throw a warning if nothing is submitted
+        showFeedbackWarning("species_id", "Taxonomic ID is required. If you don't know the ID, you can use the UniProt search on the data processing page to search for it based on a species name.")
+        # Check for non numeric can be also done with is.na(as.numeric(input$taxID)) which returns TRUE if input is not numeric
+      } else {
+        hideFeedback("species_id")
+        gene_list <- fetch_selected_genes()
 
-      data$gene_list <- gene_list
-      data$gene_user <- input$gene_user
-      data$node_count <- input$node_count
-      data$interaction_significance <- input$interaction_significance
-      data$network_type <- input$network_type
-      data$network_flavor <- input$network_flavor
+        data$gene_list <- gene_list
+        data$gene_user <- input$gene_user
+        data$node_count <- input$node_count
+        data$interaction_significance <- input$interaction_significance
+        data$network_type <- input$network_type
+        data$network_flavor <- input$network_flavor
 
-      data$species_id <- as.integer(input$species_id) # Convert from text input.
-      data$query_labels <- as.integer(input$query_labels)
+        data$species_id <- as.integer(input$species_id) # Convert from text input.
+        data$query_labels <- as.integer(input$query_labels)
 
-      additional_args <- build_args()
-      data$verbtext <- additional_args
-      session$sendCustomMessage("string_network_fetch", additional_args)
+        additional_args <- build_args()
+        data$verbtext <- additional_args
+        session$sendCustomMessage("string_network_fetch", additional_args)
 
-      # Fetch the network URL.
-      gene_user <- input$gene_user
-      data$network_url <- string_api_call(c(gene_list, gene_user), "url")
-
+        # Fetch the network URL.
+        gene_user <- input$gene_user
+        data$network_url <- string_api_call(c(gene_list, gene_user), "url")
+      }
     }) %>% bindEvent(input$update_network)
 
     # Update the taxonomic ID if it's already been submitted in the data processing module.
     observe({
       req(data$taxID)
-
       updateTextInput(session, "species_id", value = data$taxID)
     })
 
@@ -226,7 +230,6 @@ network_server <- function(id, data) {
       data$verbtext
     })
 
-    # FIXME: Throws an error. Problem with cat() and lists.
     # Observer for the network URL and render.
     output$network_url <- renderText({
       req(!is.null(data$network_url))

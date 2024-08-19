@@ -3,6 +3,10 @@
 # FIXME: Probably just merge Plotting and Network modules to simplify the shared data handling
 # TODO: Could still implement a global_data object in the main app to act as a data storage that's shared between modules
 
+# This app can be launched through the R console by running the following two commands:
+# library(shiny)
+# runApp("MSDA/MSDAShiny/msda-app.R")
+
 library(shiny)
 library(shinyjs)
 library(shinybusy)
