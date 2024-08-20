@@ -4,3 +4,9 @@
 .Ruserdata
 .lintr
 rsconnect
+commstest
+crosstalktest
+stringtest
+synctest
+MSTMTanalysis.R
+MTstatsTMTFragPipe.R
