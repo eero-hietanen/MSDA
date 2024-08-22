@@ -29,7 +29,7 @@ library(crosstalk)
 library(colourpicker)
 library(bsicons)
 library(STRINGdb)
-library(igraph)
+library(RColorBrewer)
 library(vroom)
 library(httr2)
 # library(InteractiveComplexHeatmap) # Implement this for the GO enrichment analysis visualization.
@@ -91,7 +91,7 @@ ui <- page_navbar(
       console.log('STRINGdb identifiers:', combined_gene_list);
 
       getSTRING('https://string-db.org', {
-        'species': options.species_id,
+        'species': options.taxa_id,
         'identifiers': combined_gene_list,
         'network_flavor': options.network_flavor,
         'network_type': options.network_type,

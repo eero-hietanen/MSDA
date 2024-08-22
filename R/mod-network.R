@@ -1,57 +1,9 @@
-# Protein interaction network analysis with STRINGdb, igraph, and networkD3.
-# Network module needs the table from plotting (UniProt table with significant hits) module as input.
-# User should be able to:
-#   1) Select a gene
-#   2) View its interaction network
-# Module's main view outputs should be the network graph and a data table (ideally Crosstalk linked).
-# Data download should offer interaction partners of queried protein (other info? check STRINGdb website).
-
-# Check the STRINGdb documentation for the Payload Mechanisms section w.r.t. colouring the nodes based on up-/down-reg.
-# STRINGdb help page (API docs) https://string-db.org/cgi/help. Check the embedding section.
-# TODO: Update the STRINGdb network to work based on the selection from the shared_data table
-# TODO: See if there's a way to get back/select clusters from the network so that a selection could be done on the table based on the cluster,
-#       so that the user can go back and examine how different clusters contain up-/down-regulated genes.
-# TODO: Check clustering options for the network. Are they needed as settings for the network module?
-# FIXME: There is a bug when plotting is done the first time where the Network module doesn't update the first selection the user does from the Plotting module?
-#        Check if updating the network tab when the plotting is generated in the plotting tab would work. When switching to the network
-#        tab the first time initialization of the inputs is seen briefly, so selection not working without first switching/updating the tab could be the reason.
-# FIXME: Check the problem with the STRING network generation when multiple plot points are selected.
-
-# jsCode <- "
-#         shinyjs.loadStringData = function() {
-#         getSTRING('https://string-db.org', {
-#             'species': '9606',
-#             'identifiers': 'TP53',
-#             'network_flavor':'confidence'
-#         });
-#     };"
+# Protein interaction network analysis with STRINGdb and the embedded JS library.
 
 network_ui <- function(id) {
   ns <- NS(id)
 
   useShinyjs()
-  # extendShinyjs(text = jsCode, functions = "loadStringData")
-
-  # Something causing dysfunction here. Onclick for the button works, the extended js function doesn't seem to be called though.
-  # Probabaly something to do with namespacing/modules? Try to put a print statement inside the 'loadStringData' to see if it gets called.
-  # TODO: Look into implementing the loadStringData() JS function through Shiny.addCustomMessageHandler
-
-  # extendShinyjs(text = paste0('shinyjs.loadStringData = function() {
-  #       console.log("loadStringData called with gene:");
-  #       getSTRING("https://string-db.org", {
-  #           "ncbiTaxonId":"9606",
-  #           "identifiers": gene,
-  #           "network_flavor":"confidence"})
-  #   }'), functions = "loadStringData")
-
-  # tags$script(HTML("Shiny.addCustomMessageHandler('string_network_fetch', function(gene) {
-  #     console.log('customMessageHandler loaded with', gene)
-  #     getSTRING('https://string-db.org', {
-  #           'species': '9606',
-  #           'identifiers': [gene],
-  #           'network_flavor':'confidence'
-  #       });
-  # });"))
 
   grid_container(
     layout = c(
@@ -69,26 +21,27 @@ network_ui <- function(id) {
       area = "network_side",
       card_header("Settings"),
       card_body(
-        # STRINGdb seems to reliably recognize searches by gene names ('gene_primary' UniProt field)
-        # Parsing of these entries should be done in the same manner as the identifiers given for
-        # UniProt fields, i.e. whitespace separated.
         textInput(ns("gene_user"), placehold = "e.g. TP53 MDM4", label = tooltip(
           trigger = list(
             "Additional query IDs",
             bs_icon("info-circle")
           ), "Protein/gene IDs to query STRINGdb with. IDs entered here can be queried separately if there is no selection made on the data table."
         ), ),
-        numericInput(ns("node_count"), value = 10, label = tooltip(
+        numericInput(ns("node_count"), value = 0, label = tooltip(
           trigger = list(
             "Network node count",
             bs_icon("info-circle")
           ), "Sets the network node count if querying with a single protein. If the query consists of multiple proteins, only connections between queried proteins are shown."
         ), ),
-        sliderInput(ns("interaction_significance"), label = "Interaction threshold", min = 0, max = 1000, value = 0, step = 5),
+        sliderInput(ns("interaction_significance"), value = 0, min = 0, max = 1, step = 0.05, label = tooltip(
+          trigger = list(
+            "Minimum interaction score",
+            bs_icon("info-circle")
+          ), "Minimum interaction score for connections to be shown in the network. STRINGdb defines the thresholds as: 0.15 = low confidence, 0.4 = medium confidence, 0.7 = high confidence, 0.9 = highest confidence."
+        ), ),
         selectInput(ns("network_type"), label = "Network type", choices = list("Functional" = "functional", "Physical" = "physical"), selected = "Functional"),
         selectInput(ns("network_flavor"), label = "Network flavor", choices = list("Evidence" = "evidence", "Condifence" = "confidence", "Actions" = "actions"), selected = "Evidence"),
-        # numericInput(ns("species_id"), label = "Taxonomic ID", value = "9606"),
-        textInput(ns("species_id"), label = "Taxonomic ID", placeholder = "e.g. 9606"),
+        textInput(ns("taxa_id"), label = "Taxonomic ID", placeholder = "e.g. 9606"),
         checkboxInput(ns("query_labels"), label = tooltip(
           trigger = list(
             "Use query labels as names",
@@ -96,24 +49,13 @@ network_ui <- function(id) {
           ),
           "Use protein names from the data table as node names in the STRING network."
         ), value = FALSE),
-        # checkboxInput(ns("colour_nodes"), label = tooltip(
-        #   trigger = list(
-        #     "Use colour in added nodes",
-        #     bs_icon("info-circle")
-        #   ),
-        #   "Use coloured network nodes when adding extra nodes into the network."
-        # ), value = FALSE),
-        # Need an input selector for proteins (although should ideally just be based on selected data table row?)
-        # What options does a STRINGdb search usually need? Target species, what sort of network to build etc.? Check their website
-        # actionButton(ns("button"), "click"),
         fluidRow(
           actionButton(ns("update_network"), label = "Update network", width = "155px"),
           actionButton(ns("remove_nodes"), label = "-5", width = "auto"),
           actionButton(ns("add_nodes"), label = "+5", width = "auto"),
           style = "display: flex; justify-content: space-around;"
         ),
-        uiOutput(ns("network_url")), # Network URL output
-        # actionButton(ns("network_selected"), label = "Network selected rows"),
+        uiOutput(ns("network_url")),
         actionButton(ns("test_button"), label = "Test enrichment"),
         # actionButton(ns("clear_selection"), label = "Clear selection"), # NYI
         # downloadButton(ns("data_download"), "Download table"), # NYI
@@ -123,7 +65,6 @@ network_ui <- function(id) {
       area = "network_main",
       card_body(
         tags$div(id = "stringEmbedded"), # Not namespaced as the JS library doesn't find the namespaced element name
-        # DTOutput(outputId = ns("network_table")),
         navset_underline(
           id = ns("network_main_tabs"),
           nav_panel(
@@ -159,21 +100,21 @@ network_server <- function(id, data) {
 
     # Network selected rows together with the user input genes.
     observe({
-      if (input$species_id == "") { # throw a warning if nothing is submitted
-        showFeedbackWarning("species_id", "Taxonomic ID is required. If you don't know the ID, you can use the UniProt search on the data processing page to search for it based on a species name.")
-        # Check for non numeric can be also done with is.na(as.numeric(input$taxID)) which returns TRUE if input is not numeric
+      if (input$taxa_id == "") { # Throw a warning if nothing is submitted
+        showFeedbackWarning("taxa_id", "Taxonomic ID is required. If you don't know the ID, you can use the UniProt search on the data processing page to search for it based on a species name.")
+        # Check for non numeric can be also done with is.na(as.numeric(input$taxa_id)) which returns TRUE if input is not numeric
       } else {
-        hideFeedback("species_id")
+        hideFeedback("taxa_id")
         gene_list <- fetch_selected_genes()
 
         data$gene_list <- gene_list
         data$gene_user <- input$gene_user
         data$node_count <- input$node_count
-        data$interaction_significance <- input$interaction_significance
+        data$interaction_significance <- input$interaction_significance * 1000
         data$network_type <- input$network_type
         data$network_flavor <- input$network_flavor
 
-        data$species_id <- as.integer(input$species_id) # Convert from text input.
+        data$taxa_id <- as.integer(input$taxa_id) # Convert from text input.
         data$query_labels <- as.integer(input$query_labels)
 
         additional_args <- build_args()
@@ -188,8 +129,8 @@ network_server <- function(id, data) {
 
     # Update the taxonomic ID if it's already been submitted in the data processing module.
     observe({
-      req(data$taxID)
-      updateTextInput(session, "species_id", value = data$taxID)
+      req(data$taxa_id)
+      updateTextInput(session, "taxa_id", value = data$taxa_id)
     })
 
     # Test button observe event. Use for testing enrichment.
@@ -202,11 +143,6 @@ network_server <- function(id, data) {
       cat("combined ", genes, "\n")
       data$enrichment <- string_api_call(genes, "enrichment")
     }) %>% bindEvent(input$test_button)
-
-    # NYI: Clear selection button observe event. Used to clear the selected_rows to null.
-    # observe({
-    #   data$selected_rows <- c("")
-    # }) %>% bindEvent(input$clear_selection)
 
     # Observes the add_nodes button and increases the network nodes when clicked.
     observe({
@@ -228,13 +164,6 @@ network_server <- function(id, data) {
     output$verb_text_out <- renderPrint({
       req(!is.null(data$verbtext))
       data$verbtext
-    })
-
-    # Observer for the network URL and render.
-    output$network_url <- renderText({
-      req(!is.null(data$network_url))
-      network_url <- data$network_url
-      paste0(network_url)
     })
 
     output$network_url <- renderUI({
@@ -357,7 +286,7 @@ network_server <- function(id, data) {
         interaction_significance = data$interaction_significance,
         network_type = data$network_type,
         network_flavor = data$network_flavor,
-        species_id = data$species_id,
+        taxa_id = data$taxa_id,
         query_labels = as.integer(data$query_labels)
       )
 

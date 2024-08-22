@@ -1,14 +1,6 @@
-# plotting handles the volcano plots (check EnchancedVolcano lib) and
-# saving the plots as a pdf/image file
-# add a way to select plotted targets, e.g., full groups or just specific
-# proteins (for QC plots)
+# Plotting handles the volcano plots (check EnchancedVolcano lib) and saving the plots as a pdf/image file
 
-# TODO: Implement accordions in the main panel. Put plot output in one, DT output in the other.
-#       Link plot and DT so that selection <-> plot highlight work. Implement download of up/down reg. proteins.
-# TODO: The plotting options for pval and FC cutoff need clarification regarding what the number is (e.g. some log of |2FC|?)
-# TODO: Organize the plotting module code so that it has a clear division for crosstalk / non-crosstalk code for ease of testing.
 # TODO: Add buttons/boxes to select all up-/down-regulated genes. Or both.
-# FIXME: FC-cutoff and updating it is buggy on the plot; requires two clicks of the "Update plot" button to update
 
 plotting_ui <- function(id) {
   useShinyjs()
@@ -28,21 +20,11 @@ plotting_ui <- function(id) {
       "1fr"
     ),
     gap_size = "3px",
-    # This side panel should probably be a sideBarPanel so that it's collapsible
-    # To change the UI layout to a collapsible sidebar use layout_sidebar() and put the UI code starting from the
-    # grid_card() element inside of it. Set grid_card() you want in the sidebar with sidebar = grid_card(...), and then
-    # continue with the "main panel" grid_card().
-    # This approach leaves out the grid_container section above.
-    #  layout_sidebar(
-    #     sidebar = grid_card(
-    #         area = "plotting_side", ...
-
     grid_card(
       area = "plotting_side",
       card_header = "Settings",
       card_body(
         accordion(open = FALSE,
-          # selectInput(ns("plot_select"), "Plot select", choices = NULL, selected = NULL),
           accordion_panel(
             "Help",
             tags$div(HTML("<h5>Volcano plot</h5>
@@ -64,11 +46,8 @@ plotting_ui <- function(id) {
           accordion_panel(
             "Plot options",
             textInput(ns("plot_title"), label = "Title"),
-            # Use numericInput here instead of sliderInput as the p-val cutoff might have to be lowered substantially
             numericInput(ns("plot_pcutoff"), label = "p-value cutoff", value = 0.05, step = 0.01),
             numericInput(ns("plot_fccutoff"), label = "FC cutoff", value = 2, step = 0.1),
-            # sliderInput(ns("plot_pcutoff"), label = "p-value cutoff", min = 0, max = 1, value = 0.05),
-            # sliderInput(ns("plot_fccutoff"), label = "FC cutoff", min = 0, max = 3, value = 1.1, step = 0.1),
           ),
         ),
         tags$hr(),
@@ -105,25 +84,16 @@ plotting_server <- function(id, data) {
     plots <- reactiveValues()
     tables <- reactiveValues()
 
-    # FIXME: For FC-cutoff to update correctly it requires two clicks of the update plot button, while p-value requires one.
-    # This function should likely be split into two. One should generate the initial plot and the second one should handle
-    # updating the graphed elements, e.g. p-val cutoff line, while using the previously generated plot data. This way the
-    # whole plot data doesn't have to be re-generated each time the plot is updated.
-    # TODO: There should be two separate observers, or split logic, so that the gneetate_plot() function is not called each time
-    # the user adjusts things like p-val. cutoff. Instead, already existing plot data, with only updated values should be used.
     observe({
       req(!is.null(data$groupcomp_data))
       shinyjs::show("data_download")
     }) %>% bindEvent(input$generate_plot)
 
-    # FIXME: The problem with the table updating with Crosstalk might be due to the way data$prepped_data is used
-    # If the shared data object refers back to prepped_data, then that'll always be the latest one
-    # Test this and see if there's a way to generate a separate prepped_data for each plot/table pair
     prep_data <- function(input) {
       fccutoff <- data$fccutoff()
       pcutoff <- data$pcutoff()
 
-      # add a categorical column for up/down regulated genes; default value "NS"
+      # Add a categorical column for up/down regulated genes; default value "NS"
       input$diffexp <- "NS"
       # Changed the log2FC vals from 0.5 to 0.6, also for xintercept below (geom_vline()); change back if wrong; check standard log2FC cutoff
       input$diffexp[input$log2FC > fccutoff & input$adj.pvalue < pcutoff] <- "Up-regulated"
@@ -133,11 +103,6 @@ plotting_server <- function(id, data) {
       data$prepped_data <- input
     }
 
-    # TODO: Consider removing the functionality of storing multiple plots and making them browsable through inputSelect.
-    #       Instead, make the adjustments to FC and p-val cutoffs dynamic so they update in real time without generating a new plot
-    #       and just have the single plot/table representation for the data.
-    # FIXME: Changed to a single "real-time" output for the plot and table. However, it's somewhat fucked.
-    #        Check the slider input and how the values are read / interpreted for the plot as they seem to bounce around.
     generate_plot <- function() {
       if (data$use_uniprot) {
         prep_data(data$uniprot_data)
@@ -154,17 +119,11 @@ plotting_server <- function(id, data) {
         plot_fccutoff = input$plot_fccutoff
       )
 
-      # counter(counter() +1) # Note how reactiveVal() is being updated compared to reactiveValues() element
-      # plot_name <- paste0("Plot", counter())
-
-      # 'group' is the parameter that acts as an identifier between the linked object groups, not 'key'
-      # FIXME: A problem persists where the DT render output doesn't update to the correct data table (evident by 'diffexp' column values)
       shared_data <- SharedData$new(reactive(data$prepped_data))
       data$shared_data <- shared_data
 
-      plot_data <- plotting_volcano(shared_data, additional_args) # test plotting function used with Crosstalk
+      plot_data <- plotting_volcano(shared_data, additional_args)
 
-      # data$p <- plot_data[["p"]]
       data$p <- plot_data[["p"]]
       data$t <- shared_data
     }
@@ -176,40 +135,31 @@ plotting_server <- function(id, data) {
     })
 
     # Crosstalk plot_table output
-    # New table is generated alongside a new plot when the plotting button is pressed.
-    # However, if navigating back, the table doesn't change based on selected plot.
-    # Problem here seems to come from the SDO being updated to whatever the new values are for the table generation when pressing the button
-    # and then that one SDO is used for all plots.
-    # What's needed is a new SDO for each plot <-> table combination. Check Crosstalk functions for retrieving and cloning(?) the data.
-    # Solution is likely related to assigning a key to each SDO when it's being linked to a plot (clone and assing key?)
-    output$plot_table <- renderDT(
-      {
-        # req(!is.null(plots))
-        # req(!is.null(input$plot_select) && input$plot_select != "")
-        req(!is.null(data$t))
+    output$plot_table <- renderDT({
+      req(!is.null(data$t))
 
-        plot_table <- data$t
-        datatable(
-          plot_table,
-          rownames = FALSE,
-          filter = "top",
-          options = list(
-            scrollX = TRUE,
-            searching = TRUE,
-            pageLength = 25,
-            columnDefs = list(list(
-              targets = "_all",
-              render = JS(
-                "function(data, type, row, meta) {",
-                "return type === 'display' && data != null && data.length > 30 ?",
-                "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
-                "}"
-              )
-            ))
-          )
+      plot_table <- data$t
+      datatable(
+        plot_table,
+        rownames = FALSE,
+        filter = "top",
+        options = list(
+          scrollX = TRUE,
+          searching = TRUE,
+          pageLength = 25,
+          columnDefs = list(list(
+            targets = "_all",
+            render = JS(
+              "function(data, type, row, meta) {",
+              "return type === 'display' && data != null && data.length > 30 ?",
+              "'<span title=\"' + data + '\">' + data.substr(0, 30) + '...</span>' : data;",
+              "}"
+            )
+          ))
         )
-      },
-      server = FALSE
+      )
+    },
+    server = FALSE
     ) # App struggles with large tables with client-side processing, but is required for Crosstalk to work
 
     output$plot_output <- renderPlotly({

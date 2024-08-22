@@ -98,29 +98,30 @@ data_groupcomparisons <- function(input, ...) {
 
 #####################################
 # ----- Volcano plot (manual) ----- #
-# Crosstalk enabled plotting        #
+#     Crosstalk enabled plotting    #
 #####################################
 
 plotting_volcano <- function(input, ...) {
   args <- unlist(list(...))
 
-  # set up base plot; note to log-transform p-value
-  p <- ggplot(input, aes(x = log2FC, y = -log10(adj.pvalue), col = factor(diffexp), text = input$Protein)) +
-    geom_point()
-  # add plot labels
+  # Set up base plot; note to log-transform p-value
+  p <- ggplot(input, aes(x = log2FC, y = -log10(adj.pvalue), col = factor(diffexp), text = input$Protein)) + geom_point()
+  # Add plot labels
   p <- p + labs(x = "log2FC", y = "adj. p-value", title = args[["plot_title"]], color = "")
-  # add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
+  # Add cutoff lines; note yintercept log-transform to count for y-axis log-transform above
   p <- p + geom_vline(xintercept = c(-as.numeric(args[["plot_fccutoff"]]), as.numeric(args[["plot_fccutoff"]])), col = "#960000", linetype = "dash", linewidth = 0.3) + geom_hline(yintercept = -log10(as.numeric(args[["plot_pcutoff"]])), col = "#960000", linetype = "dash", linewidth = 0.3)
-  # adjust colour mapping
-  # p <- p + scale_color_manual(values=c("red", "black", "blue"), name = "Differential expression")
+  # Adjust colour mapping
+  palette <- brewer.pal(n = 3, name = "RdBu")
+  plot_colors <- c("Down-regulated" = palette[1], "Up-regulated" = palette[3], "NS" = palette[2])
+  color_scale <- scale_color_manual(name = " Differential expression", values = plot_colors, limits = c("Down-regulated", "Up-regulated", "NS"))
+  p <- p + color_scale
 
-  # names for DE genes can be toggled by adding another column to the 'plotdf' and
+  # Names for DE genes can be toggled by adding another column to the 'plotdf' and
   # copying the 'Label' based on filtering by the 'diffexp' value of UP/DOWN
   # check 'ggrepel' library and the geom_text_repel() function for label placement
 
   # Return a list with the plot p and the plotdf. Use plotdf as the data table and enable download signif. proteins through it.
-  return(list(p = p, plotdf = input)) # Can just return p here
-  # p
+  return(list(p = p, plotdf = input)) # Could just return p here
 }
 
 ##################################
@@ -132,15 +133,15 @@ plotting_volcano <- function(input, ...) {
 # from the original R script. This table should also act as a basis for the plotting functions
 # as it has more available data, such as gene names that can act as better labels for DE genes.
 
-uniprot_fetch <- function(input, taxID, fields) {
+uniprot_fetch <- function(input, taxa_id, fields) {
   # Function to fetch UniProt data and construct a final results table similar to what's
   # in the original script file.
-  # Requires 'taxID' and 'dataCols' as inputs to determine which organism to fetch the data for
+  # Requires 'taxa_id' and 'dataCols' as inputs to determine which organism to fetch the data for
   # and which UniProt fields should be fetched for the final table.
 
   show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
 
-  # Cat("Fetching with: ", taxID) # Test message to R console
+  # Cat("Fetching with: ", taxa_id) # Test message to R console
 
   # Filter out the rows with found issues from group comparisons
   comparison_result <- filter(input, is.na(input$issue))
@@ -160,30 +161,12 @@ uniprot_fetch <- function(input, taxID, fields) {
   # return fields listed at https://www.uniprot.org/help/return_fields.
   # Chinese hamster taxon ID = 10029, obtained with 'availableUniprotSpecies(pattern="greseus")
 
-  taxDB <- UniProt.ws(taxID)
+  taxa_db <- UniProt.ws(taxa_id)
   # Split fields character string by whitespace and unlist the result to retrieve a vector
-  uniprot_result <- UniProt.ws::select(x = taxDB, keys = accession_list, columns = unlist(strsplit(fields, " ")))
+  uniprot_result <- UniProt.ws::select(x = taxa_db, keys = accession_list, columns = unlist(strsplit(fields, " ")))
 
   # Merge UniProt results with existing comparison results.
   merged_result <- NULL
-
-  # Original method for merging tables and building the UniProt results table.
-  # Has a problem where user specified proteins are not kept in the table.
-
-  # for (row in 1:nrow(uniprot_result)) {
-  #   output <- cbind(comparison_result[grepl(uniprot_result[row, 1], comparison_result$Protein)], uniprot_result[row, ])
-
-  #   merged_result <- rbind(merged_result, output, fill = TRUE)
-  # }
-
-  # Rename 'Protein' column based on 'Entry' column and remove the redundant
-  # 'Entry', 'From', 'DF', and 'Issue' columns.
-  # Done with dplyr if_else() as the base package ifelse had a renaming issue.
-
-  # merged_result$Protein <- if_else(is.na(merged_result$Entry), merged_result$Protein, merged_result$Entry, merged_result$Protein)
-  # merged_result <- subset(merged_result, select = -c(From, Entry, issue, DF))
-
-  # Modified table merging method using dlpyr. Should be more robust
 
   # Simplify the Protein column in comparison_result, but keep the original for later use in step 2.
   comparison_result <- comparison_result %>%
@@ -209,9 +192,9 @@ uniprot_fetch <- function(input, taxID, fields) {
 ####################################
 
 uniprot_fetch_species <- function(input) {
-  speciesTable <- UniProt.ws::availableUniprotSpecies(pattern = input)
+  species_table <- UniProt.ws::availableUniprotSpecies(pattern = input)
 
-  speciesTable
+  species_table
 }
 
 #######################################

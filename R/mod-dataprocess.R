@@ -1,28 +1,11 @@
-# dataprocess handles viewing of the preprocessed data for checking by the user
-# as well as starts rest of the data processing (protein summarization,
-# group comparisons)
-# once initial processing module works add a way to select different
-# groups for comparisons
+# Dataprocess handles viewing of the preprocessed data for checking by the user
+# as well as starts rest of the data processing (protein summarization, group comparisons).
 
 # TODO:
 #  - Add options for using a reference channel
-#  - Add a comparison selection function, i.e. if there are more groups than just
-#    standard 'control' and 'sample'
-#  - Add an export function for the UniProt data table
-#  - QC plotting options?
-#  - Adjustable cutoff values for VolcanoPlot (p-value and log2FC)
-#  - VolcanoPlot image export
+#  - Add a comparison selection function, i.e. if there are more groups than just standard 'control' and 'sample'
+#  - QC plotting options
 #  - Check https://laustep.github.io/stlahblog/posts/DTcallbacks.html for useful data table callbacks
-#  - Modify the UI so that the plots sizing is sensible
-
-# TODO: See if there's a way to add a raw console output to the app to monitor things like UniProt fetch in case there are server errors.
-#       Also see about a way to interrupt the fetch (e.g. if it's stuck in an internal server error loop).
-# TODO: Group comparisons between other combinations than just control vs sample? Use factor() to get options from the right rable column?
-# TODO: Group comparisons generating a data table with "Issue" column -> check where all it's used -> should be UniProt table (since it's formatted better)? -> if not, either way prune the Issues column and all invalid columns
-# TODO: Insert a gap between tab titles (nav underline) and the actual data table
-# TODO: Validate the UniProt columns that are fetched
-# TODO: Check table generation functions: groupcomp table has row names (1,2,3...), while uniprot table doesn't
-# TODO: Switch to UniProt tab when the data is fetched
 
 dataprocess_ui <- function(id) {
   useShinyjs()
@@ -95,13 +78,6 @@ dataprocess_ui <- function(id) {
               ),
               "Censors missing values based on the maximum quantile value."
             ), value = 0.999, step = 0.01),
-            # checkboxGroupInput(
-            #   inputId = ns("summ_options"),
-            #   label = "Summarization options",
-            #   choices = c("summ_peptide_norm", "summ_protein_norm", "summ_remove_norm", "summ_remove_empty"),
-            #   choiceNames = list("Peptide level normalization", "Protein level normalization (ref. channel based", "Remove norm. channel", "Remove empty channel"),
-            #   choiceValues = NULL
-            # ),
             actionButton(
               inputId = ns("groupcomparisons"),
               label = "Compare groups",
@@ -110,7 +86,7 @@ dataprocess_ui <- function(id) {
           ),
           accordion_panel(
             "UniProt search",
-            textInput(inputId = ns("taxID"), label = tooltip(
+            textInput(inputId = ns("taxa_id"), label = tooltip(
               trigger = list(
                 "Taxonomic ID or species name",
                 bs_icon("info-circle")
@@ -143,13 +119,11 @@ dataprocess_ui <- function(id) {
         textOutput(ns("textout"))
       )
     ),
-    # FIXME: The additional tables should become visible as necessary, and not from the start.
     grid_card(
       area = "dataprocessing_main",
       full_screen = TRUE,
       card_header("Data tables"),
       card_body(
-        # bslib might have a solution for hidden panels.
         navset_underline(
           id = ns("dataprocess_tabs"),
           nav_panel(
@@ -189,8 +163,8 @@ dataprocess_server <- function(id, data) {
 
     # Store the taxonomic ID for use later in the network module.
     observe({
-      req(input$taxID)
-      data$taxID <- input$taxID
+      req(input$taxa_id)
+      data$taxa_id <- input$taxa_id
     })
 
     # Observer for the UniProt search and subsequent table use.
@@ -204,19 +178,19 @@ dataprocess_server <- function(id, data) {
       # Call util func to fetch uniprot data and construct table; returns the table
       req(data$groupcomp_data) # this could be changed to validate() to check if groupcomp_data is NULL or not
 
-      if (input$taxID == "") { # throw a warning if nothing is submitted
-        showFeedbackWarning("taxID", "Taxonomic ID or at least partial species name is required")
-        # Check for non numeric can be also done with is.na(as.numeric(input$taxID)) which returns TRUE if input is not numeric
-      } else if (!grepl("^\\d+$", input$taxID)) { # if the input is not numeric, treat it as a species name pattern and fetch uniprot taxa IDs based on it
-        hideFeedback("taxID")
-        data$uniprot_species <- uniprot_fetch_species(input$taxID)
-      } else { # finally, if a numeric value is given use it as the taxa ID to fetch uniprot data; TODO: this should still be validated so that the user cannot submit alphanumeric values etc.
-        # call uniprot_validate_fields() to check the columns the user is about to call; show feedback if they're invalid
-        # validation here is buggy; check the utils function, likely a problem with the way input$uniprot_columns is unlisted and checked
+      if (input$taxa_id == "") { # Throw a warning if nothing is submitted
+        showFeedbackWarning("taxa_id", "Taxonomic ID or at least partial species name is required")
+        # Check for non numeric can be also done with is.na(as.numeric(input$taxa_id)) which returns TRUE if input is not numeric
+      } else if (!grepl("^\\d+$", input$taxa_id)) { # if the input is not numeric, treat it as a species name pattern and fetch uniprot taxa IDs based on it
+        hideFeedback("taxa_id")
+        data$uniprot_species <- uniprot_fetch_species(input$taxa_id)
+      } else { # Finally, if a numeric value is given use it as the taxa ID to fetch uniprot data; TODO: this should still be validated so that the user cannot submit alphanumeric values etc.
+        # Call uniprot_validate_fields() to check the columns the user is about to call; show feedback if they're invalid
+        # Validation here is buggy; check the utils function, likely a problem with the way input$uniprot_columns is unlisted and checked
         if (uniprot_validate_fields(input$uniprot_columns)) {
-          hideFeedback("taxID")
+          hideFeedback("taxa_id")
           hideFeedback("uniprot_columns")
-          data$uniprot_data <- uniprot_fetch(data$groupcomp_data, input$taxID, input$uniprot_columns)
+          data$uniprot_data <- uniprot_fetch(data$groupcomp_data, input$taxa_id, input$uniprot_columns)
         } else {
           showFeedbackWarning("uniprot_columns", "Wrong UniProt fields")
         }
@@ -255,7 +229,7 @@ dataprocess_server <- function(id, data) {
     })
 
     output$uniprot_table <- renderDT({
-      # datatable modification from https://stackoverflow.com/a/66037552
+      # Datatable modification from https://stackoverflow.com/a/66037552
       # shortens cells with characters > 30 and enables tooltip to view the cell data
       df <- datatable(
         data$uniprot_data,
@@ -279,8 +253,6 @@ dataprocess_server <- function(id, data) {
     })
 
     output$uniprot_species <- renderDT({
-      # datatable modification from https://stackoverflow.com/a/66037552
-      # shortens cells with characters > 30 and enables tooltip to view the cell data
       df <- datatable(
         data$uniprot_species,
         rownames = FALSE,
@@ -313,7 +285,7 @@ dataprocess_server <- function(id, data) {
         } else if (selected_tab() == "UniProt data") {
           file_name <- paste0("uniprot-data-", Sys.Date(), ".csv", sep = "")
         } else if (selected_tab() == "UniProt taxa IDs") {
-          file_name <- paste0("uniprot-taxIDs-", Sys.Date(), ".csv", sep = "")
+          file_name <- paste0("uniprot-taxa_ids-", Sys.Date(), ".csv", sep = "")
         }
         return(file_name)
       },
