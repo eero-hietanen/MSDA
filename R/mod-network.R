@@ -1,4 +1,6 @@
 # Protein interaction network analysis with STRINGdb and the embedded JS library.
+# TODO: There is a problem where a selection made on the Network page data table doesn't count for gene selection.
+#       This has to do with the network DT render and the fetch_selected_genes function.
 
 network_ui <- function(id) {
   ns <- NS(id)
@@ -107,7 +109,7 @@ network_server <- function(id, data) {
         hideFeedback("taxa_id")
         gene_list <- fetch_selected_genes()
 
-        data$gene_list <- gene_list
+        # data$gene_list <- gene_list #Disabled to test the ID mapping
         data$gene_user <- input$gene_user
         data$node_count <- input$node_count
         data$interaction_significance <- input$interaction_significance * 1000
@@ -117,6 +119,9 @@ network_server <- function(id, data) {
         data$taxa_id <- as.integer(input$taxa_id) # Convert from text input.
         data$query_labels <- as.integer(input$query_labels)
 
+        #Map gene/protein IDs to STRING IDs before building the args list
+        data$gene_list <- string_api_id_mapping(gene_list)
+        
         additional_args <- build_args()
         data$verbtext <- additional_args
         session$sendCustomMessage("string_network_fetch", additional_args)
@@ -253,9 +258,10 @@ network_server <- function(id, data) {
     server = FALSE
     )
 
-    # Fethces the selected genes from the table based on the selection.
+    # Fetches the selected genes from the table based on the selection.
     # It should retrieve the protein names from the "Protein" column, however it seems to just return row indices.
-    # At the same time, things like the STRING DB API call to build the network correctly fethces the protein name when the call is sent.
+    # At the same time, things like the STRING DB API call to build the network correctly fetches the protein name when the call is sent.
+    # TODO: This needs to be amended to use the data$selected_rows that's passed from the plotting module.
     fetch_selected_genes <- function() {
       req(!is.null(data$t))
 

@@ -216,8 +216,6 @@ uniprot_validate_fields <- function(input) {
   fields_ok
 }
 
-
-# TODO: Change this function to handle different API calls by modifying the req_url_path_append() function based an input value.
 ######################################################
 # ----- STRINGdb API calls: Enrichment analysis -----#
 # This can be modified to handle different api calls.#
@@ -226,7 +224,7 @@ uniprot_validate_fields <- function(input) {
 ######################################################
 
 string_api_call <- function(input, type_switch) {
-  # Concatenates the identifiers. Carriage return, \r, is used as a delimiter for the func. enrichment API call.
+  # Concatenates the identifiers. Carriage return, \r, is used as a delimiter for the func. enrichment API call (also others).
   string_conv <- function(input) {
     paste0(input, collapse = "\r")
   }
@@ -246,4 +244,34 @@ string_api_call <- function(input, type_switch) {
   resp_body_tsv_parsed <- vroom(I(resp_body_tsv), delim = "\t")
 
   resp_body_tsv_parsed
+}
+
+######################################################
+#------ STRINGdb API calls: STRING ID mapping -------#
+# This can be modified to handle different api calls.#
+# Pass a variable that is used to handle which API   #
+# call is performed.                                 #
+######################################################
+
+#Direct all of the IDs (user included) here in the end for mapping.
+
+string_api_id_mapping <- function(input, ...) {
+  string_conv <- function(input) {
+    paste0(input, collapse = "\r")
+  }
+  
+  # Parse the optional parameters here
+  # ...
+  
+  req <- request("https://string-db.org/api/tsv/get_string_ids")
+  resp <- req |>
+    req_url_query(identifiers = string_conv(input)) |>
+    # Optional parameters (url queries for opt params can be stringed together here):
+    req_url_query(species = "...", echo_query = "1") |>
+    req_perform()
+  resp_body_tsv <- resp |> resp_body_string()
+  resp_body_tsv_parsed <- vroom(I(resp_body_tsv), delim = "\t")
+  string_ids <- resp_body_tsv_parsed$stringId
+
+  string_ids
 }
