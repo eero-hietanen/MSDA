@@ -223,26 +223,35 @@ uniprot_validate_fields <- function(input) {
 # call is performed.                                 #
 ######################################################
 
-string_api_call <- function(input, type_switch) {
+string_api_call <- function(input, ...) {
+  
+  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
+  
   # Concatenates the identifiers. Carriage return, \r, is used as a delimiter for the func. enrichment API call (also others).
   string_conv <- function(input) {
     paste0(input, collapse = "\r")
   }
+  
+  ids <- string_conv(input)
 
-  if (type_switch == "enrichment") {
+  args <- unlist(list(...))
+  
+  if (args[["call_type"]] == "enrichment") {
     api_call_type <- "tsv/enrichment"
-  } else if (type_switch == "url") {
+  } else if (args[["call_type"]] == "url") {
     api_call_type <- "tsv/get_link"
   }
-
+  
   req <- request("https://string-db.org/api")
   resp <- req |>
     req_url_path_append(api_call_type) |>
-    req_url_query(identifiers = string_conv(input)) |>
+    req_url_query(identifiers = ids, species = args[["species"]]) |>
     req_perform()
   resp_body_tsv <- resp |> resp_body_string()
   resp_body_tsv_parsed <- vroom(I(resp_body_tsv), delim = "\t")
 
+  remove_modal_spinner()
+  
   resp_body_tsv_parsed
 }
 
@@ -256,22 +265,26 @@ string_api_call <- function(input, type_switch) {
 #Direct all of the IDs (user included) here in the end for mapping.
 
 string_api_id_mapping <- function(input, ...) {
+  
+  show_modal_spinner(spin = "orbit", text = "Processing...", color = "#0d6efd")
+  
   string_conv <- function(input) {
     paste0(input, collapse = "\r")
   }
   
-  # Parse the optional parameters here
-  # ...
+  ids <- string_conv(input)
+  
+  args <- unlist(list(...))
   
   req <- request("https://string-db.org/api/tsv/get_string_ids")
   resp <- req |>
-    req_url_query(identifiers = string_conv(input)) |>
-    # Optional parameters (url queries for opt params can be stringed together here):
-    req_url_query(species = "...", echo_query = "1") |>
+    req_url_query(identifiers = ids, species = args[["species"]]) |>
     req_perform()
   resp_body_tsv <- resp |> resp_body_string()
   resp_body_tsv_parsed <- vroom(I(resp_body_tsv), delim = "\t")
   string_ids <- resp_body_tsv_parsed$stringId
 
+  remove_modal_spinner()
+  
   string_ids
 }

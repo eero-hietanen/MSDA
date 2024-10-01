@@ -35,7 +35,7 @@ network_ui <- function(id) {
             bs_icon("info-circle")
           ), "Sets the network node count if querying with a single protein. If the query consists of multiple proteins, only connections between queried proteins are shown."
         ), ),
-        sliderInput(ns("interaction_significance"), value = 0, min = 0, max = 1, step = 0.05, label = tooltip(
+        sliderInput(ns("interaction_significance"), value = 0.4, min = 0, max = 1, step = 0.05, label = tooltip(
           trigger = list(
             "Minimum interaction score",
             bs_icon("info-circle")
@@ -58,7 +58,7 @@ network_ui <- function(id) {
           style = "display: flex; justify-content: space-around;"
         ),
         uiOutput(ns("network_url")),
-        actionButton(ns("test_button"), label = "Test enrichment"),
+        actionButton(ns("test_enrichment"), label = "Test enrichment"),
         # actionButton(ns("clear_selection"), label = "Clear selection"), # NYI
         # downloadButton(ns("data_download"), "Download table"), # NYI
       )
@@ -126,9 +126,16 @@ network_server <- function(id, data) {
         data$verbtext <- additional_args
         session$sendCustomMessage("string_network_fetch", additional_args)
 
-        # Fetch the network URL.
-        gene_user <- input$gene_user
-        data$network_url <- string_api_call(c(gene_list, gene_user), "url")
+        string_network_url_ids <- NULL
+        
+        data$call_type <- "url"
+        
+        string_api_args <- list(
+          call_type = data$call_type,
+          species = data$taxa_id
+        )
+        
+        data$network_url <- string_api_call(data$gene_list, string_api_args)
       }
     }) %>% bindEvent(input$update_network)
 
@@ -140,14 +147,28 @@ network_server <- function(id, data) {
 
     # Test button observe event. Use for testing enrichment.
     observe({
-      selected_genes <- fetch_selected_genes()
-      user_genes <- input$gene_user
-      genes <- c(selected_genes, user_genes)
-      cat("selected ", selected_genes, "\n")
-      cat("user ", user_genes, "\n")
-      cat("combined ", genes, "\n")
-      data$enrichment <- string_api_call(genes, "enrichment")
-    }) %>% bindEvent(input$test_button)
+      gene_list <- fetch_selected_genes()
+      gene_user <- input$gene_user
+      data$call_type <- "enrichment"
+      
+      # cat("selected ", selected_genes, "\n")
+      # cat("user ", user_genes, "\n")
+      # cat("combined ", genes, "\n")
+      
+      string_enrichment_query_ids <- NULL
+      string_api_args <- list(
+        call_type = data$call_type,
+        species = data$taxa_id
+      )
+      
+      if (!is.null(gene_user) || gene_user == "") {
+        string_enrichment_query_ids <- gene_list
+      } else {
+        string_enrichment_query_ids <- c(gene_list, gene_user)
+      }
+      
+      data$enrichment <- string_api_call(string_enrichment_query_ids, string_api_args)
+    }) %>% bindEvent(input$test_enrichment)
 
     # Observes the add_nodes button and increases the network nodes when clicked.
     observe({
