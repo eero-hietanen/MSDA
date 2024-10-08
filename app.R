@@ -1,11 +1,8 @@
 # TODO: Check if the currently used MSstats functions can be changed to the more base level ones (access with MSstats:::), so hopefully log file generation can be turned off properly.
-# TODO: Implement an enrichment analysis option like in ProteomeDiscoverer: i.e., perform GO term enrichment analysis on a selected set of genes
-# FIXME: Probably just merge Plotting and Network modules to simplify the shared data handling
-# TODO: Could still implement a global_data object in the main app to act as a data storage that's shared between modules
 
 # This app can be launched through the R console by running the following two commands:
 # library(shiny)
-# runApp("MSDA/MSDAShiny/msda-app.R")
+# runApp("MSDA/app.R")
 
 library(shiny)
 library(shinyjs)
@@ -32,7 +29,6 @@ library(STRINGdb)
 library(RColorBrewer)
 library(vroom)
 library(httr2)
-# library(InteractiveComplexHeatmap) # Implement this for the GO enrichment analysis visualization.
 
 options(shiny.maxRequestSize = 40 * 1024^2)
 # options(shiny.error = NULL)
@@ -115,21 +111,6 @@ ui <- page_navbar(
       ".checkbox label {font-size: 90%; display:inline-block}"
     )
   ),
-
-  # vapor theme modifications
-  # FIXME: Fix the background colour in the theme when elements are expanded (fullscreen)
-  # something broke with the datatable row selection colour
-  # theme = bs_theme_update(bs_theme(bootswatch = "vapor"),
-  #                         base_font = font_google("Roboto"),
-  #                         font_scale = 0.9,
-  #                         `enable-rounded` = TRUE) |> bs_add_rules(
-  #                           list(".datatables td {padding-top: 3px; padding-bottom: 3px; font-size: 80%}",
-  #                                ".datatables td {--dt-row-selected: #ea39b8}",
-  #                                ":root {--bs-primary-bg-subtle: #1a0933}",
-  #                                ".accordion .accordion-header .accordion-title {color: var(--bs-cyan)}")
-  #                         ),
-
-  # Check shinyjs and hidden ('shinyjs::hidden') as a way to initialize hidden UI
 
   title = "seQwin.",
   nav_panel("Data upload", dataupload_ui("upload")),
