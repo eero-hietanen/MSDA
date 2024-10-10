@@ -14,12 +14,18 @@ data_preprocessing <- function(evidence, annotation, source_type) {
   evidence <- vroom(evidence$datapath)
   annotation <- vroom(annotation$datapath)
 
-  if (source_type == "FragPipe") {
-    dataOut <- PhilosophertoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
-  } else if (source_type == "ProteomeDiscoverer") {
-    dataOut <- PDtoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
-  }
-
+  switch(source_type,
+         FragPipe = {
+           dataOut <- PhilosophertoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
+           },
+         ProteomeDiscoverer = {
+           dataOut <- PDtoMSstatsTMTFormat(evidence, annotation, use_log_file = FALSE)
+           },
+         MaxQuant = {
+           dataOut <- MaxQtoMSstatsTMTFormat(evidence, protein_groups, annotation, use_log_file = FALSE)
+           },
+         )
+  
   remove_modal_spinner()
 
   dataOut
